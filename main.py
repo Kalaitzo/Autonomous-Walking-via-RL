@@ -5,7 +5,8 @@ from sac_torch import Agent
 from utils import plot_learning_curve
 
 if __name__ == '__main__':
-    env = gym.make('InvertedPendulumBulletEnv-v0')  # Create environment
+    env = gym.make('Walker2DBulletEnv-v0')  # Create environment
+    # env = gym.make('InvertedPendulumBulletEnv-v0')  # Create environment
     agent = Agent(input_dims=env.observation_space.shape, env=env, n_actions=env.action_space.shape[0])  # Create agent
     n_games = 1000  # Number of games
 
@@ -43,7 +44,7 @@ if __name__ == '__main__':
             if not load_checkpoint:
                 agent.save_models()
 
-        print('episode ', i, 'score: %.1f' % score, 'avg score: %.1f' % avg_score)  # Print results
+        print('Episode:', i, '| Score: %.1f' % score, '| Average score: %.1f' % avg_score)  # Print results
 
     if not load_checkpoint:
         x = [i+1 for i in range(n_games)]
