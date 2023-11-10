@@ -1,7 +1,7 @@
 # Autonomous-Walking-via-RL
-This GitHub repository focuses on the development of autonomous walking capabilities for a biped
-robot using Reinforcement Learning (RL). It's a part of a research thesis dedicated to exploring
-RL-based locomotion control.
+This project focuses on the development of autonomous walking capabilities for a biped robot using 
+Reinforcement Learning (RL). It's a research thesis dedicated to exploring RL-based solutions 
+for locomotion control.
 ## Inverted Pendulum
 At first in order to evaluate the performance of the simple actor-critic algorithm and the soft
 actor-critic algorithm, the inverted pendulum environment was used.
