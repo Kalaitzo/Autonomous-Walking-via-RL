@@ -18,8 +18,10 @@ class Agent:
         # Agent networks
         self.actor = ActorNetwork(alpha, input_dims, n_actions=n_actions,
                                   name='actor', max_actions=env.action_space.high)  # Actor network
+
         self.critic_1 = CriticNetwork(beta, input_dims, n_actions=n_actions, name='critic_1')  # Critic network 1
         self.critic_2 = CriticNetwork(beta, input_dims, n_actions=n_actions, name='critic_2')  # Critic network 2
+
         self.value = ValueNetwork(beta, input_dims, name='value')  # Value network
         self.target_value = ValueNetwork(beta, input_dims, name='target_value')  # Target value network
 
