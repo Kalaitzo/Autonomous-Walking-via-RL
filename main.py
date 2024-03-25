@@ -2,11 +2,13 @@ import pybullet_envs
 import gym
 import numpy as np
 from sac_torch import Agent
-from utils import plot_learning_curve
+from utils import plot_learning_curve, keep_same_angles
+from robot_environment import RobotEnv
 
 if __name__ == '__main__':
     env = gym.make('Walker2DBulletEnv-v0')  # Create environment
-    # env = gym.make('InvertedPendulumBulletEnv-v0')  # Create environment
+    # env = RobotEnv() # My custom environment for the robot
+    # env = gym.make('InvertedPendulumBulletEnv-v0')  # Inverted pendulum environment (for testing)
     agent = Agent(input_dims=env.observation_space.shape, env=env, n_actions=env.action_space.shape[0])  # Create agent
     n_games = 1000  # Number of games
 
@@ -29,6 +31,9 @@ if __name__ == '__main__':
 
         while not done:  # Iterate while not done
             action = agent.choose_action(observation)  # Choose action
+            # TODO: Set the values of the joints that we dont need to move to their initial values (0 or 90 degrees) I
+            #  don't remember the correct initial values of the joints. Their indexes are 3, 4, 8, and 9 (not sure)
+            # action = keep_same_angles(action, [3, 4, 8, 9])
             observation_, reward, done, info = env.step(action)  # Step
             score += reward  # Update score
             agent.remember(observation, action, reward, observation_, done)  # Remember
