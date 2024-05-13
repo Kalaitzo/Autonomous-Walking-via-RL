@@ -13,7 +13,7 @@ class RobotEnv(Env):
         # Each servo joint angle (10)
         self.observation_space = Box(low=-1000000, high=1000000, shape=(12,))
 
-        self.action_space = Box(low=-30, high=30, shape=(10,))  # The servo angles (6 joints)
+        self.action_space = Box(low=-30, high=30, shape=(10,))  # The servo angles
         # We set the action space to be between 0 and 30 degrees for each joint because there is no need for bigger
         # angles. The robot will not be able to move if the angles are bigger than 30 degrees.
 
@@ -47,7 +47,7 @@ class RobotEnv(Env):
         # Maybe something like
         # servo_angles = self.observation[:10]  # The servo angles
         # force = np.array(self.force)  # The force calculated by the force sensor
-        # velocity = np.array(self.velocity)  # The speed of the robot
+        # velocity = np.array(self.velocity) # The speed of the robot
 
         # The observation will be the servo angles, the force, and the velocity in a single 1x12 array
         observation = np.concatenate((servo_angles, force, velocity), axis=None)
@@ -71,7 +71,7 @@ class RobotEnv(Env):
         reward = standing_reward + walking_reward  # The reward will be the sum of the standing and walking rewards
 
         # Check if the episode is done
-        done = self.steps <= 0 or force > 1  # The episode is done if the robot has taken all the steps or has "fallen"
+        done = self.steps <= 0 or force > 1  # The episode is done if the robot has taken all the steps or has "fallen."
         # TODO: Tune the values of the force and the steps (steps=1000, force>1 ?)
 
         info = {

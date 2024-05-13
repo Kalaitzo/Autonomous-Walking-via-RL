@@ -44,7 +44,7 @@ if __name__ == '__main__':
         score_history.append(score)  # Append score
         avg_score = np.mean(score_history[-100:])  # Average score
 
-        if avg_score > best_score:  # If average score is greater than best score
+        if avg_score > best_score:  # If the average score is greater than the best score
             best_score = avg_score  # Update best score
             if not load_checkpoint:
                 agent.save_models()
