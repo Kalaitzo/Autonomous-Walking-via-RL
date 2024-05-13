@@ -12,14 +12,17 @@ if __name__ == '__main__':
     agent = Agent(input_dims=env.observation_space.shape, env=env, n_actions=env.action_space.shape[0])  # Create agent
     n_games = 1000  # Number of games
 
-    filename = 'inverted_pendulum.png'  # Filename
+    filename = 'Walker2D.png'  # Filename
     figure_file = 'plots/' + filename  # Figure file
 
     best_score = env.reward_range[0]  # Best score
     score_history = []  # Score history
-    load_checkpoint = False  # Load checkpoint
+    load_checkpoint = True  # Load checkpoint
+    render = True  # Render
+    learn = True  # Learn
 
-    env.render(mode='human')  # Render environment
+    if render:
+        env.render(mode='human')  # Render environment
 
     if load_checkpoint:
         agent.load_models()  # Load models
@@ -37,16 +40,16 @@ if __name__ == '__main__':
             observation_, reward, done, info = env.step(action)  # Step
             score += reward  # Update score
             agent.remember(observation, action, reward, observation_, done)  # Remember
-            if not load_checkpoint:
+            if learn:
                 agent.learn()
             observation = observation_  # Observation
 
         score_history.append(score)  # Append score
-        avg_score = np.mean(score_history[-100:])  # Average score
+        avg_score = np.mean(score_history[-100:])  # Average score over the last 100 games
 
         if avg_score > best_score:  # If the average score is greater than the best score
-            best_score = avg_score  # Update best score
-            if not load_checkpoint:
+            best_score = avg_score  # Set the average score as the best score
+            if learn:
                 agent.save_models()
 
         print('Episode:', i, '| Score: %.1f' % score, '| Average score: %.1f' % avg_score)  # Print results
