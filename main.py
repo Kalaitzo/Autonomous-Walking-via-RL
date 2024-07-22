@@ -33,8 +33,8 @@ if __name__ == '__main__':
         done = False  # Done
         score = 0  # Score
 
-        physics_client_id = env.env.physicsClientId  # Get physics client ID
-        robot_id = env.env.robot._p._pid  # Get robot ID
+        # physics_client_id = env.env.physicsClientId  # Get physics client ID
+        # robot_id = env.env.robot._p._pid  # Get robot ID
 
         while not done:  # Iterate while not done
             action = agent.choose_action(observation)  # Choose action
