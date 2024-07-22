@@ -1,4 +1,5 @@
 import pybullet_envs
+import pybullet as p
 import gym
 import numpy as np
 from sac_torch import Agent
@@ -31,6 +32,9 @@ if __name__ == '__main__':
         observation = env.reset()  # Reset environment
         done = False  # Done
         score = 0  # Score
+
+        physics_client_id = env.env.physicsClientId  # Get physics client ID
+        robot_id = env.env.robot._p._pid  # Get robot ID
 
         while not done:  # Iterate while not done
             action = agent.choose_action(observation)  # Choose action
