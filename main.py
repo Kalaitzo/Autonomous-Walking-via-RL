@@ -42,9 +42,6 @@ if __name__ == '__main__':
         robot_id = env.env.robot.objects[0]  # Robot ID
         joint_ids = [joint.jointIndex for joint in env.env.robot.jdict.values()]  # Joint IDs
 
-        # Initialize the array to be store in the 3D array with the trajectories of each episode
-        trajectory = np.array([])  # Trajectory
-
         # TODO: Write a function in the utils.py file to get the angles of the joints of the robot
         #  that has inputs the robot id, client id, and the joint ids. The function should return the angles of the
         #  joints in degrees. The function should be called get_joint_angles(robot_id, physics_client_id, joint_ids)
@@ -58,6 +55,8 @@ if __name__ == '__main__':
         angles = np.array(angles)  # Convert to a numpy array
         angles_deg = np.rad2deg(angles)  # Convert to degrees
 
+        # Initialize the array to be store in the 3D array with the trajectories of each episode
+        trajectory = np.array([])  # Trajectory
         # Append the angles to the trajectory
         trajectory = np.append(trajectory, angles_deg)
 
