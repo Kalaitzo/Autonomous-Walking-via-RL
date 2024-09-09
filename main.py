@@ -1,28 +1,25 @@
 import pybullet_envs
-import pybullet as p
 import gym
-import numpy as np
 from sac_torch import Agent
-from utils import plot_learning_curve, keep_same_angles
-from robot_environment import RobotEnv
+from utils import *
 
 if __name__ == '__main__':
     env = gym.make('Walker2DBulletEnv-v0')  # Create environment
     # env = RobotEnv() # My custom environment for the robot
     # env = gym.make('InvertedPendulumBulletEnv-v0')  # Inverted pendulum environment (for testing)
     agent = Agent(input_dims=env.observation_space.shape, env=env, n_actions=env.action_space.shape[0])  # Create agent
-    n_games = 1000  # Number of games
+    n_games = 10000  # Number of games
 
     filename = 'Walker2D.png'  # Filename
     figure_file = 'plots/' + filename  # Figure file
 
     best_score = env.reward_range[0]  # Best score
     score_history = []  # Score history
-    load_checkpoint = True  # Load checkpoint
-    render = True  # Render
+    load_checkpoint = False  # Load checkpoint
+    render = False  # Render
     learn = True  # Learn
 
-    # Set an array to store the angles of the joints that are used to achieve the trajectory for each episode
+    # Initialize an array to store the angles of the joints that are used to achieve the trajectory for each episode
     # 1001 is the number of max steps in each episode, and 6 is the number of joints
     trajectories = np.zeros((n_games, 1001, 6))  # Trajectories of each episode
 
@@ -42,22 +39,13 @@ if __name__ == '__main__':
         robot_id = env.env.robot.objects[0]  # Robot ID
         joint_ids = [joint.jointIndex for joint in env.env.robot.jdict.values()]  # Joint IDs
 
-        # TODO: Write a function in the utils.py file to get the angles of the joints of the robot
-        #  that has inputs the robot id, client id, and the joint ids. The function should return the angles of the
-        #  joints in degrees. The function should be called get_joint_angles(robot_id, physics_client_id, joint_ids)
-        angles = []  # Angles
-        # Get the angles of the joints before applying any action
-        for joint_id in joint_ids:
-            angle = p.getJointState(robot_id, joint_id)[0]  # Get joint angle
-            angles.append(angle)  # Append angle
-        # TODO:==========================================
+        # Get the angles of the joints before starting the episode
+        angles_deg = get_angles(robot_id, joint_ids)
 
-        angles = np.array(angles)  # Convert to a numpy array
-        angles_deg = np.rad2deg(angles)  # Convert to degrees
-
-        # Initialize the array to be store in the 3D array with the trajectories of each episode
+        # Initialize the array for the trajectory of the current episode
         trajectory = np.array([])  # Trajectory
-        # Append the angles to the trajectory
+
+        # Append the angles to the trajectory array
         trajectory = np.append(trajectory, angles_deg)
 
         while not done:  # Iterate while not done
@@ -72,22 +60,13 @@ if __name__ == '__main__':
                 agent.learn()
 
             # Get the angles of the joints after applying the action/step
-            # TODO: Update this part with the function that will be created in the utils.py file
-            angles = []  # Array for the new angles
-            for joint_id in joint_ids:
-                angle = p.getJointState(robot_id, joint_id)[0]  # Get a joint angle (This is in radians probably)
-                angles.append(angle)
-
-            angles = np.array(angles)  # Convert to a numpy array
-            angles_deg = np.rad2deg(angles)  # Convert to degrees
+            angles_deg = get_angles(robot_id, joint_ids)
 
             # Append the angles to the trajectory as a new row.
             # TODO: Write down which joint corresponds to each column
             trajectory = np.vstack((trajectory, angles_deg))
 
-            # If the episode is done, append the trajectory (array of steps) of that episode to the 3D array
-            # At the end of the episode each column will have the angles of all actions
-            # taken for each joint
+            # If the episode is done, store the trajectory
             if done:
                 trajectories[i, :trajectory.shape[0], :] = trajectory  # Append the last angles
 
