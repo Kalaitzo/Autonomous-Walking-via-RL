@@ -5,8 +5,8 @@ from networks import ActorNetwork, CriticNetwork, ValueNetwork
 
 
 class Agent:
-    def __init__(self, alpha=0.0007, beta=0.0007, gamma=0.99, input_dims=[8], env=None, n_actions=2, max_size=1000000,
-                 layer1_size=256, layer2_size=256, batch_size=256, reward_scale=1, tau=0.005):
+    def __init__(self, alpha=0.0003, beta=0.0003, gamma=0.99, input_dims=[8], env=None, n_actions=2, max_size=1000000,
+                 layer1_size=256, layer2_size=256, batch_size=256, reward_scale=2, tau=0.005):
         self.gamma = gamma
         self.tau = tau
         self.batch_size = batch_size
@@ -71,7 +71,7 @@ class Agent:
         self.target_value.load_checkpoint()  # Load target value network
 
     def learn(self):  # Learn
-        if self.memory.mem_cntr < self.batch_size:  # If memory counter is less than batch size
+        if self.memory.mem_cntr < self.batch_size:  # If the memory counter is less than batch size
             return
 
         state, action, reward, new_state, done = self.memory.sample_buffer(self.batch_size)  # Sample buffer
