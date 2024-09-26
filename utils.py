@@ -27,3 +27,9 @@ def get_angles(robot_id, joint_ids):
     angles = np.array(angles)  # Convert to a numpy array
     angles_deg = np.rad2deg(angles)  # Convert to degrees
     return angles_deg
+
+
+def reformatObservation(observation: list, angles: list) -> list:
+    # Reformat the observation
+    observation = [angles]
+    return observation
