@@ -29,19 +29,19 @@ class RealEnvironment(gym.Env):
         # time.sleep(0.5)
 
         # Robot state will have all the information gathered from the robot [angles, velocities, etc.]
-        robot_state = np.array(self.robot_interface.get_state()).squeeze()  # Get the new state after the action
+        robot_new_state = np.array(self.robot_interface.get_state()).squeeze()  # Get the new state after the action
 
-        # TODO: When the reward function is established it will require only the robot state
-        reward = self.calculate_reward(robot_state, self.target_angles)  # Compute the reward
+        # TODO: When the reward function is established it will require only the new robot state
+        reward = self.calculate_reward(robot_new_state, self.target_angles)  # Compute the reward
         # print(f"Reward: {reward}")
 
-        done = self.is_done(robot_state)  # Check if the episode is done
+        done = self.is_done(robot_new_state)  # Check if the episode is done
 
         truncated = False  # Check if the episode was truncated
 
         info = {}
 
-        return robot_state, reward, done, truncated, info
+        return robot_new_state, reward, done, truncated, info
 
     def seed(self, seed=None):
         self.np_random, _ = gym.utils.seeding.np_random(seed)
