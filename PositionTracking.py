@@ -2,27 +2,20 @@ import time
 from utils import *
 
 marker_id = 0  # ID of the marker
-side_pixels = 200  # Side length of the marker in pixels
-side_cm = 0.071  # Side length of the marker in cm (7.1 cm) - Measured with a ruler
+side_m = 0.07  # Side length of the marker in cm (7 cm) - Measured with a ruler
+
+# Load the camera calibration parameters
+with np.load("camera_calibration_params.npz") as camera_calibration_params:
+    cam_matrix = camera_calibration_params["camera_matrix"]
+    distortion_coefficients = camera_calibration_params["distortion_coefficients"]
 
 aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)  # Get the dictionary of aruco markers
-
 parameters = cv2.aruco.DetectorParameters()  # Parameters for the aruco marker detectionD
-
-directory = "img/aruco_markers/"  # Directory to save the image
-
-marker_image = createArucoMarker(marker_id, side_pixels, directory)  # Create and save the aruco marker image
 
 camera = cv2.VideoCapture(0)  # Open the camera
 
-pixel_to_meter_ratio = side_pixels / side_cm  # Pixel-to-meter ratio
-
 prev_position = None  # Previous position of the marker
-previous_time = 0  # Previous time
-
-# Parameters for filtering
-positions = []  # Store recent position measurements
-filter_size = 5  # Number of samples to average
+prev_time = 0  # Previous time
 
 while True:
     ret, frame = camera.read()  # Read the frame from the camera
@@ -35,34 +28,26 @@ while True:
     if np.all(ids is not None):
         cv2.aruco.drawDetectedMarkers(gray_frame, corners, ids)  # Draw the outlines of the detected markers
 
-        pixel_to_meter_ratio = calculateCalibrationFactor(corners, side_cm)  # Calculate the pixel-to-meter ratio
+        # Estimate the pose of the markers
+        r_vecs, t_vecs, _ = cv2.aruco.estimatePoseSingleMarkers(corners, side_m, cam_matrix, distortion_coefficients)
 
-        center_position = getMarkerCenter(corners)  # The position of the marker on the image not in the real world
+        center_position = t_vecs[0][0]  # Get the center position of the marker
 
-        # Filter the position
-        # positions.append(center_position)
-        # if len(positions) > filter_size:
-        #     positions.pop(0)
-        # center_position = np.mean(positions, axis=0).astype(int)
-
-        current_time = time.time()  # Get the current time as(t_k: s)
+        current_time = time.time()  # Get the current time
 
         # Calculate the velocity if the previous position is not None
         if prev_position is not None:
-            velocity = calculateVelocity(prev_position, center_position, previous_time, current_time,
-                                         pixel_to_meter_ratio)  # Calculate the velocity
+            velocity = calculateVelocity(prev_position, center_position, prev_time, current_time)  # Calculate the v_x
 
-            cv2.circle(frame, center_position, 5, (0, 0, 255), -1)  # Draw the center of the marker
+            displayVelocity(velocity, frame)  # Display the velocity information on the frame
 
-            drawFrameAxis(center_position[0], center_position[1], frame)  # Draw the x-y axis
-
-            displayVelocity(velocity, frame)  # Display the velocity information
+        cv2.drawFrameAxes(frame, cam_matrix, distortion_coefficients, r_vecs[0], t_vecs[0], side_m)  # Draw the axes
 
         # Update the previous position and time
         prev_position = center_position
-        previous_time = current_time
+        prev_time = current_time
 
-    cv2.imshow("Frame", frame)  # Display the frame
+    cv2.imshow("Aruco Marker Detection", frame)  # Display the frame
 
     key = cv2.waitKey(1)  # Wait for a key press
     if key == 27:  # If the key is the escape key
