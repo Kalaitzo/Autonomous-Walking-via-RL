@@ -2,3 +2,6 @@
 .idea/*
 __pycache__/
 tmp/sac/*
+camera_calibration_params.npz
+img/aruco_markers/
+img/calibration_images/
