@@ -28,18 +28,19 @@ class RealEnvironment(gym.Env):
         :param action: The action to take
         :return: The new state, the reward, whether the episode is done, and additional information
         """
+        # When executed, this only sets the frame before applying the action as the previous frame
+        # The velocity returned here is not the velocity developed during the action
+        # self.camera.getMarkerVelocity()
+
         # print("Applying action...")
         self.robot_interface.send_action(self.joint_indices, action)  # Send the action to the robot to be executed
-
-        # Uncomment this if necessary
-        # time.sleep(0.5)
 
         # Robot state will have all the information gathered from the robot [angles, velocities, etc.]
         robot_new_state = np.array(self.robot_interface.get_state()).squeeze()  # This will get the angles and the force
 
-        # TODO: Calculate the robot's speed
-        # Will need to add the velocity to the robot_new_state (observation)
+        # This will calculate the velocity after applying the action
         # velocity = self.camera.getMarkerVelocity()
+        # TODO: Add this velocity to the state
 
         # TODO: When the reward function is established it will require:
         # - The robot's speed
