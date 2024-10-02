@@ -34,4 +34,7 @@ for i in range(n_games):
     # - The model learns
     model.learn(total_timesteps=time_steps)
 
+    # Save the model
+    model.save("models/sac_robot")
+
     print(f"Episode {i} finished with a score of {real_env.episode_score}")
