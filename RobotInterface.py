@@ -4,7 +4,7 @@ import numpy as np
 
 
 class RobotInterface:
-    def __init__(self, SERIAL_PORT: str, BAUD_RATE: int = 57600):
+    def __init__(self, SERIAL_PORT: str, BAUD_RATE: int = 4800):
         self.arduino = serial.Serial(SERIAL_PORT, BAUD_RATE)
         time.sleep(2)
 
@@ -17,7 +17,7 @@ class RobotInterface:
         action_parts = [f"{index}:{int(round(angle))}" for index, angle in zip(servo_indices, angles)]
         action = ",".join(action_parts) + "\n"
         self.arduino.write(action.encode('utf-8'))
-        # print(f"Command sent to Arduino: {action.strip()}")
+        print(f"Command sent to Arduino: {action.strip()}")
 
     def get_state(self) -> list:
         self.arduino.write(b"state\n")
@@ -26,12 +26,16 @@ class RobotInterface:
         if self.arduino.in_waiting > 0:
             response = self.arduino.readline().decode('utf-8').rstrip()
             self.joint_angles = [int(angle) for angle in response.split(",")]
-            # print(f"Received state from Arduino: {self.joint_angles}")
+            print(f"Received state from Arduino: {self.joint_angles}")
 
         return self.joint_angles
 
     def reset_robot(self, servo_indices: list[int], angles: list[int]) -> None:
-        self.send_action(servo_indices, angles)
+        self.arduino.write(b"reset\n")
+
+        if self.arduino.in_waiting > 0:
+            response = self.arduino.readline().decode('utf-8').rstrip()
+            print(f"Received reset confirmation from Arduino: {response}")
 
     def disconnect(self):
         self.arduino.close()
