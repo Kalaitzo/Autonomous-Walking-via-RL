@@ -21,12 +21,10 @@ n_games = 1000
 time_steps = 1000
 
 for i in range(n_games):
-    # Reset the environment
-    observation = real_env.reset()
-
     # This will call the step from the environment 1000 times, or until the episode is done
-    # This is basically the while not done loop in the main.py file
+    # When the episode is done or before starting the steps the reset method is called
     # So the following happens:
+    # - The model resets the environment
     # - The model chooses the action
     # - The action is applied to the robot by the RealEnvironment's step method
     # - The step method generates the robot_new_state, reward, done, _, and, _
