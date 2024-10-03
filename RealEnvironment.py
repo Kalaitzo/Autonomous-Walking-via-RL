@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import gymnasium as gym
 from RobotInterface import RobotInterface
@@ -8,7 +9,7 @@ from ArucoDetectionCamera import ArucoDetectionCamera
 class RealEnvironment(gym.Env):
     def __init__(self, robot_interface: RobotInterface, camera: ArucoDetectionCamera):
         super(RealEnvironment, self).__init__()
-        self.action_space = gym.spaces.Box(low=0, high=5, shape=(6,), dtype=float)
+        self.action_space = gym.spaces.Box(low=-5, high=5, shape=(6,), dtype=float)
         self.observation_space = gym.spaces.Box(low=0, high=180, shape=(6,), dtype=float)
 
         self.robot_interface = robot_interface
@@ -17,10 +18,11 @@ class RealEnvironment(gym.Env):
         self.robot_state = None
         self.np_random = None
         self.joint_indices = [7, 5, 3, 6, 4, 2]  # Change this to the actual channel indices on the PCA9685 board
+        self.reset_angles = [78, 64, 70, 77, 78, 70]  # The reset angles
 
         self.target_angles = np.random.randint(0, 5, 6)
-
         self.episode_score = 0
+        self.observation = np.zeros(6)
 
     def step(self, action: list) -> tuple:
         """
@@ -34,30 +36,39 @@ class RealEnvironment(gym.Env):
 
         # print("Applying action...")
         self.robot_interface.send_action(self.joint_indices, action)  # Send the action to the robot to be executed
+        time.sleep(1)  # Wait for the robot to execute the action
 
         # Robot state will have all the information gathered from the robot [angles, velocities, etc.]
-        robot_new_state = np.array(self.robot_interface.get_state()).squeeze()  # This will get the angles and the force
+        robot_new_state = np.array(self.robot_interface.get_state()).squeeze()  # Get everything from the robot
+        angles = robot_new_state[self.joint_indices]  # This will get the moving angles
+        # force = robot_new_state[-1]
 
         # This will calculate the velocity after applying the action
         # velocity = self.camera.getMarkerVelocity()
         # TODO: Add this velocity to the state
 
+        # TODO: Create the observation from the angles, force and velocity
+        # observation = np.concatenate((angles, force, velocity))
+        self.observation = angles
+
         # TODO: When the reward function is established it will require:
         # - The robot's speed
         # - The force applied by the robot
         # - The action taken by the robot
-        reward = self.calculate_reward(robot_new_state, self.target_angles)  # Compute the reward
+        reward = self.calculate_reward(self.observation, self.target_angles)  # Compute the reward
         self.episode_score += reward
 
         # TODO: When the done function is established it will require:
         # - The force applied by the robot (to check if the robot is considered fallen)
-        done = self.is_done(robot_new_state)  # Check if the episode is done
+        done = self.is_done(self.observation)  # Check if the episode is done
 
         truncated = False  # Check if the episode was truncated
 
         info = {}
 
-        return robot_new_state, reward, done, truncated, info
+        # The reward returned is the reward for each step.
+        # The episode reward is calculated by the algorithm with sum() when the value done is True
+        return self.observation, reward, done, truncated, info
 
     def seed(self, seed=None):
         self.np_random, _ = gym.utils.seeding.np_random(seed)
@@ -67,10 +78,9 @@ class RealEnvironment(gym.Env):
         Reset the environment
         :return: The angles of the joints after the reset
         """
-        # print("Resetting the environment...")
-        self.robot_interface.reset_robot(self.joint_indices, [90] * 6)
+        self.robot_interface.reset_robot(self.joint_indices, self.reset_angles)  # Reset the robot
 
-        self.robot_state = np.array([self.robot_interface.get_state()]).squeeze()
+        self.robot_state = np.array([self.robot_interface.get_state()]).squeeze()[2:8]  # Get only the moving angles
 
         info = {}
 
