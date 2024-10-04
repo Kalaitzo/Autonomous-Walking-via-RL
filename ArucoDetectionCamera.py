@@ -11,9 +11,9 @@ class ArucoDetectionCamera:
         self.aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dict)  # Get the dictionary of aruco markers
         self.parameters = cv2.aruco.DetectorParameters()  # Parameters for the aruco marker detection
         self.directory = directory  # Directory to save the image
-        self.prev_position = None  # Previous position of the marker
-        self.previous_time = 0  # Previous time
         self.velocity = 0  # Velocity of the marker
+        self.center_position = None  # Center position of the marker
+        self.current_time = 0  # Current time
 
         # Load the camera calibration parameters
         with np.load("camera_calibration_params.npz") as camera_calibration_params:
@@ -28,33 +28,9 @@ class ArucoDetectionCamera:
         """
         createArucoMarker(self.marker_id, self.side_pixels, directory)
 
-    def calculateCalibrationFactor(self, corners) -> float:
+    def getMarkerPositionAndTime(self) -> (np.ndarray, float):
         """
-        Calculate the calibration factor
-        :param corners:
-        :return:
-        """
-
-        # Calculate the side length of the marker in pixels as seen by the camera
-        side_pixels = np.linalg.norm(corners[0][0][0] - corners[0][0][1])
-
-        # Calculate the pixel-to-meter ratio
-        pixel_to_meter_ratio = side_pixels / self.side_m
-
-        return pixel_to_meter_ratio
-
-    @staticmethod
-    def getMarkerCenter(corners) -> tuple:
-        marker_corners = corners[0][0]  # Get the corners of the marker
-
-        center_x = int(np.mean(marker_corners[:, 0]))  # X coordinate of the center on the image
-        center_y = int(np.mean(marker_corners[:, 1]))  # Y coordinate of the center on the image
-
-        return center_x, center_y
-
-    def getMarkerVelocity(self):
-        """
-        Get the velocity of the marker
+        Get the position of the marker
         :return:
         """
         ret, frame = self.camera.read()
@@ -63,6 +39,8 @@ class ArucoDetectionCamera:
 
         corners, ids, _ = cv2.aruco.detectMarkers(gray_frame, self.aruco_dict, parameters=self.parameters)
 
+        # cv2.imshow("Aruco Marker Detection", frame)
+
         if np.all(ids is not None):
             cv2.aruco.drawDetectedMarkers(gray_frame, corners, ids)
 
@@ -70,24 +48,35 @@ class ArucoDetectionCamera:
             r_vecs, t_vecs, _ = cv2.aruco.estimatePoseSingleMarkers(corners, self.side_m,
                                                                     self.camera_matrix, self.distortion_coefficients)
 
+            self.current_time = time.time()  # Get the current time
+
             # Draw the axes
             cv2.drawFrameAxes(frame,
                               self.camera_matrix, self.distortion_coefficients, r_vecs[0], t_vecs[0], self.side_m)
 
-            center_position = t_vecs[0][0]  # Get the center position of the marker
+            self.center_position = t_vecs[0][0]
 
-            current_time = time.time()  # Get the current time
+            cv2.imshow("Aruco Marker Detection", frame)
 
-            # Calculate the velocity if the previous position is not None
-            if self.prev_position is not None:
-                self.velocity = calculateVelocity(self.prev_position, center_position, self.previous_time, current_time)
+            return self.center_position, self.current_time
 
-                displayVelocity(self.velocity, frame)
+        else:
+            # In case the marker is not detected, return the previous position
+            self.current_time = time.time()  # Get the current time
+            return self.center_position, self.current_time
 
-            self.prev_position = center_position
-            self.previous_time = current_time
+    def getMarkerVelocity(self,
+                          previous_position: np.ndarray, previous_time: float,
+                          current_position: np.ndarray, current_time: float):
+        """
+        Get the velocity of the marker on the x-axis
+        :return: The velocity of the marker
+        """
+        distance_x = current_position[0] - previous_position[0]  # The distance on the x-axis (dx: meters)
 
-        cv2.imshow("Aruco Marker Detection", frame)
+        time_difference = current_time - previous_time  # The time difference (dt: seconds)
+
+        self.velocity = distance_x / time_difference  # The velocity of the marker (v = dx/dt: m/s)
 
         return self.velocity
 
