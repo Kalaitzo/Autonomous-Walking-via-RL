@@ -30,31 +30,34 @@ class RealEnvironment(gym.Env):
         :param action: The action to take
         :return: The new state, the reward, whether the episode is done, and additional information
         """
-        # When executed, this only sets the frame before applying the action as the previous frame
-        # The velocity returned here is not the velocity developed during the action
-        # self.camera.getMarkerVelocity()
+        # Get the position of the marker and the time before applying the action
+        # previous_position, previous_time = self.camera.getMarkerPositionAndTime()
 
         # print("Applying action...")
         self.robot_interface.send_action(self.joint_indices, action)  # Send the action to the robot to be executed
-        time.sleep(1)  # Wait for the robot to execute the action
+        time.sleep(1)  # Add a time delay so the actions are applied more smoothly
+
+        # Get the position of the marker and the time after applying the action
+        # current_position, current_time = self.camera.getMarkerPositionAndTime()
 
         # Robot state will have all the information gathered from the robot [angles, velocities, etc.]
         robot_new_state = np.array(self.robot_interface.get_state()).squeeze()  # Get everything from the robot
-        angles = robot_new_state[self.joint_indices]  # This will get the moving angles
-        # force = robot_new_state[-1]
+        angles = robot_new_state[self.joint_indices]  # This angle of the action joints after applying the action
+        # force = robot_new_state[-1] # This will get the force measured in the arduino sketch file
 
-        # This will calculate the velocity after applying the action
-        # velocity = self.camera.getMarkerVelocity()
-        # TODO: Add this velocity to the state
+        # TODO: Probably should add an if statement to check if the marker is detected, if not, set the velocity to 0
+        # Calculate the velocity developed while applying the action
+        # velocity = self.camera.getMarkerVelocity(previous_position, previous_time,
+        #                                          current_position, current_time)
 
         # TODO: Create the observation from the angles, force and velocity
         # observation = np.concatenate((angles, force, velocity))
         self.observation = angles
 
-        # TODO: When the reward function is established it will require:
-        # - The robot's speed
-        # - The force applied by the robot
-        # - The action taken by the robot
+        # TODO: When the reward function is established it will require the observation which contains:
+        # - The robot's speed: v
+        # - The force applied by the robot: f
+        # - The action taken by the robot: dq
         reward = self.calculate_reward(self.observation, self.target_angles)  # Compute the reward
         self.episode_score += reward
 
