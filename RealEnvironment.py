@@ -42,8 +42,9 @@ class RealEnvironment(gym.Env):
 
         # Robot state will have all the information gathered from the robot [angles, velocities, etc.]
         robot_new_state = np.array(self.robot_interface.get_state()).squeeze()  # Get everything from the robot
-        angles = robot_new_state[self.joint_indices]  # This angle of the action joints after applying the action
-        # force = robot_new_state[-1] # This will get the force measured in the arduino sketch file
+        angles = robot_new_state[self.joint_indices].astype(int)  # The angles of the joints after applying the action
+        weight = robot_new_state[-1].astype(float)  # This will get the force measured in the arduino sketch file
+        weight = weight if weight > 0 else 0  # If the force is negative, set it to 0
 
         # TODO: Probably should add an if statement to check if the marker is detected, if not, set the velocity to 0
         # Calculate the velocity developed while applying the action
@@ -63,7 +64,7 @@ class RealEnvironment(gym.Env):
 
         # TODO: When the done function is established it will require:
         # - The force applied by the robot (to check if the robot is considered fallen)
-        done = self.is_done(self.observation)  # Check if the episode is done
+        done = self.is_done(weight)  # Check if the episode is done
 
         truncated = False  # Check if the episode was truncated
 
@@ -81,15 +82,24 @@ class RealEnvironment(gym.Env):
         Reset the environment
         :return: The angles of the joints after the reset
         """
-        self.robot_interface.reset_robot(self.joint_indices, self.reset_angles)  # Reset the robot
+        print("Resetting the environment...")
+        self.robot_interface.reset_robot()  # Reset the robot
+        time.sleep(2)
 
-        self.robot_state = np.array([self.robot_interface.get_state()]).squeeze()[2:8]  # Get only the moving angles
+        self.robot_state = np.array([self.robot_interface.get_state()]).squeeze()
+
+        # Get only the moving angles
+        angles = self.robot_state[self.joint_indices].astype(int)  # The angles of the joints after applying the action
+        force = self.robot_state[-1].astype(float)  # This will get the force measured in the arduino sketch file
+        force = force if force > 0 else 0  # If the force is negative, set it to 0
+
+        self.observation = angles
 
         info = {}
 
         self.episode_score = 0
 
-        return self.robot_state, info
+        return self.observation, info
 
     @staticmethod
     def calculate_reward(robot_state: np.ndarray, target_angles: np.ndarray) -> float:
@@ -112,9 +122,8 @@ class RealEnvironment(gym.Env):
         return reward
 
     @staticmethod
-    def is_done(robot_state: np.ndarray) -> bool:
+    def is_done(weight: float) -> bool:
         # TODO: Implement the done function
         # Probably the done function will check if the robot has fallen by checking force measurement
         # When the robot falls the episode is done and the robot and the episode score are reset
-        done = False if robot_state is None else True
-        return done
+        return weight > 500  # If the weight is greater than 500 g, the episode is done
