@@ -17,8 +17,8 @@ real_env = RealEnvironment(robot, aruco_camera)
 # Create the learning model (SAC)
 model = SAC("MlpPolicy", real_env, verbose=1)
 
-n_games = 1000
-time_steps = 1000
+n_games = 5
+time_steps = 5
 
 for i in range(n_games):
     # This will call the step from the environment 1000 times, or until the episode is done
@@ -35,4 +35,8 @@ for i in range(n_games):
     # Save the model
     model.save("models/sac_robot")
 
-    print(f"Episode {i} finished with a score of {real_env.episode_score}")
+    # Only require for the last n_games
+    if i == n_games - 1:
+        real_env.reset()  # Reset the environment so the robot is at the initial pose for the next set of games
+
+    # print(f"Episode {i} finished with a score of {real_env.episode_score}")
