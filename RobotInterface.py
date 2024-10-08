@@ -8,7 +8,7 @@ class RobotInterface:
         self.arduino = serial.Serial(SERIAL_PORT, BAUD_RATE)
         time.sleep(2)
 
-        self.joint_angles = np.zeros(6)
+        self.robot_state = np.zeros(11)
 
     def send_action(self, servo_indices: list[int], angles: list[int]) -> None:
         if len(servo_indices) != len(angles):
@@ -25,12 +25,15 @@ class RobotInterface:
 
         if self.arduino.in_waiting > 0:
             response = self.arduino.readline().decode('utf-8').rstrip()
-            self.joint_angles = [int(angle) for angle in response.split(",")]
-            print(f"Received state from Arduino: {self.joint_angles}")
+            self.robot_state = response.split(",")
+            angles = self.robot_state[:-1]
+            force = self.robot_state[-1]
+            print(f"Received angles from arduino: {angles}")
+            print(f"Received force from arduino: {force}")
 
-        return self.joint_angles
+        return self.robot_state
 
-    def reset_robot(self, servo_indices: list[int], angles: list[int]) -> None:
+    def reset_robot(self) -> None:
         self.arduino.write(b"reset\n")
 
         if self.arduino.in_waiting > 0:
