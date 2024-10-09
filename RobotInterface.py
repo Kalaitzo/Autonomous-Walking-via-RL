@@ -17,7 +17,7 @@ class RobotInterface:
         action_parts = [f"{index}:{int(round(angle))}" for index, angle in zip(servo_indices, angles)]
         action = ",".join(action_parts) + "\n"
         self.arduino.write(action.encode('utf-8'))
-        print(f"Command sent to Arduino: {action.strip()}")
+        # print(f"Command sent to Arduino: {action.strip()}")
 
     def get_state(self) -> list:
         self.arduino.write(b"state\n")
@@ -26,10 +26,8 @@ class RobotInterface:
         if self.arduino.in_waiting > 0:
             response = self.arduino.readline().decode('utf-8').rstrip()
             self.robot_state = response.split(",")
-            angles = self.robot_state[:-1]
-            force = self.robot_state[-1]
-            print(f"Received angles from arduino: {angles}")
-            print(f"Received force from arduino: {force}")
+            # print(f"Received angles from arduino: {self.robot_state[:-1]}")
+            print(f"Received weight from arduino: {self.robot_state[-1]}")
 
         return self.robot_state
 
