@@ -5,7 +5,7 @@ from RealEnvironment import RealEnvironment
 from ArucoDetectionCamera import ArucoDetectionCamera
 
 # Make the connection to the robot (python - arduino)
-robot = RobotInterface(SERIAL_PORT='/dev/cu.usbmodem1102')
+robot = RobotInterface(SERIAL_PORT='/dev/cu.usbmodem11302')
 
 # Create an instance of the ArucoDetectionCamera class
 aruco_camera = ArucoDetectionCamera(marker_id=0, side_pixels=200, side_m=0.07,
@@ -15,12 +15,23 @@ aruco_camera = ArucoDetectionCamera(marker_id=0, side_pixels=200, side_m=0.07,
 real_env = RealEnvironment(robot, aruco_camera)
 
 # Create the learning model (SAC)
-model = SAC("MlpPolicy", real_env, verbose=1)
+model = SAC("MlpPolicy", real_env, batch_size=2, verbose=1, learning_starts=2)
 
-n_games = 5
-time_steps = 5
+n_games = 10
+time_steps = 20 * 5
+
+key = 0
 
 for i in range(n_games):
+    # Before beginning the episode, check what the camera sees
+    while True:
+        aruco_camera.testCamera()
+
+        key = cv2.waitKey(1)
+        if key == 27:
+            aruco_camera.closeWindows()
+            break
+
     # This will call the step from the environment 1000 times, or until the episode is done
     # When the episode is done or before starting the steps the reset method is called
     # So the following happens:
@@ -35,8 +46,9 @@ for i in range(n_games):
     # Save the model
     model.save("models/sac_robot")
 
+    # Reset the key
+    key = 0
+
     # Only require for the last n_games
     if i == n_games - 1:
         real_env.reset()  # Reset the environment so the robot is at the initial pose for the next set of games
-
-    # print(f"Episode {i} finished with a score of {real_env.episode_score}")
