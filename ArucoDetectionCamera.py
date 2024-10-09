@@ -1,4 +1,5 @@
 import time
+
 from utils import *
 
 
@@ -58,6 +59,8 @@ class ArucoDetectionCamera:
 
             cv2.imshow("Aruco Marker Detection", frame)
 
+            cv2.waitKey(1)
+
             return self.center_position, self.current_time
 
         else:
@@ -80,13 +83,22 @@ class ArucoDetectionCamera:
 
         return self.velocity
 
-    def close(self):
-        self.camera.release()
+    def testCamera(self) -> None:
+        ret, frame = self.camera.read()
+
+        cv2.imshow("Camera", frame)
+
+    @staticmethod
+    def closeWindows() -> None:
         cv2.destroyAllWindows()
-        return None
 
-
-
-
-
-
+    @staticmethod
+    def getMarkerDistanceY(previous_position: np.ndarray, current_position: np.ndarray):
+        """
+        Get the distance on the y-axis
+        :param previous_position:
+        :param current_position:
+        :return: The distance on the y-axis
+        """
+        displacement_y = abs(current_position[1] - previous_position[1])
+        return displacement_y
