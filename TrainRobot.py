@@ -12,13 +12,13 @@ aruco_camera = ArucoDetectionCamera(marker_id=0, side_pixels=200, side_m=0.07,
                                     aruco_dict=cv2.aruco.DICT_6X6_250, directory="img/aruco_markers/")
 
 # Create the necessary gym type environment that interacts with the robot
-real_env = RealEnvironment(robot, aruco_camera)
+real_env = RealEnvironment(robot, aruco_camera, max_actions=20)
 
 # Create the learning model (SAC)
-model = SAC("MlpPolicy", real_env, batch_size=2, verbose=1, learning_starts=2)
+model = SAC("MlpPolicy", real_env, batch_size=2, verbose=1, learning_starts=10)
 
-n_games = 10
-time_steps = 20 * 5
+n_games = 1
+time_steps = 20 * 1
 
 key = 0
 
@@ -48,7 +48,3 @@ for i in range(n_games):
 
     # Reset the key
     key = 0
-
-    # Only require for the last n_games
-    if i == n_games - 1:
-        real_env.reset()  # Reset the environment so the robot is at the initial pose for the next set of games
