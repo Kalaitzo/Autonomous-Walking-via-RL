@@ -82,8 +82,8 @@ class Agent:
         state = T.tensor(state, dtype=T.float).to(self.actor.device)  # Convert state to tensor
         action = T.tensor(action, dtype=T.float).to(self.actor.device)  # Convert action to tensor
 
-        value = self.value(state).view(-1)  # Calculate V(s) from with the value network
-        value_ = self.target_value(state_).view(-1)  # Calculate V(s) hat from with the target value network
+        value = self.value(state).view(-1)  # Calculate V(s) from the value network
+        value_ = self.target_value(state_).view(-1)  # Calculate V(s) hat from the target value network
         value_[done] = 0.0  # Target value
 
         actions, log_probs = self.actor.sample_normal(state, reparameterize=False)  # Sample action
