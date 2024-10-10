@@ -7,7 +7,7 @@ from ArucoDetectionCamera import ArucoDetectionCamera
 
 
 class RealEnvironment(gym.Env):
-    def __init__(self, robot_interface: RobotInterface, camera: ArucoDetectionCamera):
+    def __init__(self, robot_interface: RobotInterface, camera: ArucoDetectionCamera, max_actions: int):
         super(RealEnvironment, self).__init__()
         self.action_space = gym.spaces.Box(low=-5, high=5, shape=(6,), dtype=float)  # The action space
         self.observation_space = gym.spaces.Box(low=0, high=180, shape=(6,), dtype=float)  # The observation space
@@ -24,6 +24,7 @@ class RealEnvironment(gym.Env):
         self.observation = np.zeros(6)  # The observation of the environment
 
         self.actions_counter = 0  # Counter for the number of actions taken
+        self.max_actions = max_actions  # Max actions (algorithm steps) per each episode
 
     def step(self, action: list) -> tuple:
         """
@@ -51,6 +52,7 @@ class RealEnvironment(gym.Env):
         detected_flag = True
         if previous_position is None or current_position is None:
             velocity = 0
+            dy = 0
             detected_flag = False
             print("Did not detect the marker")
         else:
@@ -59,10 +61,11 @@ class RealEnvironment(gym.Env):
 
             # Flip the velocity to match the direction of movement which is towards the -x
             velocity = -velocity
+            print("Velocity of the marker: {: .2f} cm/s".format(velocity * 100))
 
-            # Calculate the distance on the y axis
+            # Calculate the distance on the y-axis
             dy = self.camera.getMarkerDistanceY(previous_position, current_position)
-            # print("Velocity of the marker: {:.2f} cm/s".format(velocity * 100))
+            print("Displacement on the y-axis: {: .2f} cm". format(dy))
 
         self.actions_counter += 1  # Increment the action counter
 
@@ -77,19 +80,22 @@ class RealEnvironment(gym.Env):
         # - Maybe the distance from the movement axis: dy (Penalty)
         # The reward returned is the reward for each step.
         # The episode reward is also calculated by the algorithm with sum() when the value done is True
-        reward = self.calculate_reward(velocity)  # Compute the reward
+        reward = self.calculate_reward(velocity, dy, action, weight)  # Compute the reward
         self.episode_score += reward
 
         # Check if the episode is done.
         # Done when: Either the weight is greater than 500 g, the marker is not detected, or 10 steps were made
         done = self.is_done(weight, detected_flag, self.actions_counter)
 
-        truncated = False  # Check if the episode was truncated (Necessary for the model to run but not used)
+        truncated = self.actions_counter == self.max_actions  # Check reached the max episode steps (20)
 
         info = {}  # Additional information (Needed for the model to run but not used)
 
         time.sleep(0.5)  # Add a time delay so the actions are applied more smoothly
 
+        if done:
+            print(f"Total reward for current episode: {self.episode_score}")
+        print('---------------')
         return self.observation, reward, done, truncated, info
 
     def seed(self, seed=None):
@@ -106,12 +112,18 @@ class RealEnvironment(gym.Env):
 
         self.robot_state = np.array([self.robot_interface.get_state()]).squeeze()
 
+        # Get the marker position after resetting the robot for the observation vector
+        current_position, surrent_time = self.camera.getMarkerPositionAndTime()
+
         # Get only the moving angles
         angles = self.robot_state[self.joint_indices].astype(int)  # The angles of the joints after applying the action
 
-        # Not required if the weight will not be in the observation space
+        # Not required if the weight is not in the observation space
         weight = self.robot_state[-1].astype(float)  # This will get the weight measured in the arduino sketch file
         weight = weight if weight > 0 else 0  # If the weight is negative, set it to 0
+
+        # Set the velocity to 0 for the observation vector when resetting the robot
+        velocity = 0
 
         self.observation = angles
 
@@ -121,19 +133,27 @@ class RealEnvironment(gym.Env):
 
         self.actions_counter = 0
 
+        print('---------------')
         return self.observation, info
 
     @staticmethod
-    def calculate_reward(velocity: float) -> float:
+    def calculate_reward(velocity: float, axis_displacement: float, dq: list, weight: float) -> float:
         # TODO: Implement the actual reward function
         # The actual reward function should take in account the following:
-        # - The velocity of the robot (v_x)
-        # - The force applied by the robot (f)
-        # - The action taken by the robot (a)
+        # - The velocity of the robot (m/s)
+        # - The weight measured by the load cell (grams)
+        # - The action taken by the robot (dq)
+        # - The displacement from the axis of movement
         # - A small reward for not falling (r = e.g. 0.1)
         # The force  and the action should be minimized
         # e.g. reward = v_x - f - 0.02 * sum(a_i) + r
-        return velocity + 0.1
+
+        # Convert the dq to the actual int angle difference
+        dq = [int(round(angle_dif)) for angle_dif in dq]
+
+        normalized_dq = np.linalg.norm(dq)
+
+        return velocity - (0.1 * axis_displacement) - (0.001 * weight) + 0.1
 
     @staticmethod
     def is_done(weight: float, detection_flag: bool, step_counter: int) -> bool:
