@@ -17,8 +17,8 @@ real_env = RealEnvironment(robot, aruco_camera, max_actions=20)
 # Create the learning model (SAC)
 model = SAC("MlpPolicy", real_env, batch_size=2, verbose=1, learning_starts=10)
 
-n_games = 1
-time_steps = 20 * 1
+n_games = 5
+time_steps = 20 * 5
 
 key = 0
 
