@@ -66,6 +66,7 @@ class ArucoDetectionCamera:
         else:
             # In case the marker is not detected, return the previous position
             self.current_time = time.time()  # Get the current time
+            self.center_position = None
             return self.center_position, self.current_time
 
     def getMarkerVelocity(self,
