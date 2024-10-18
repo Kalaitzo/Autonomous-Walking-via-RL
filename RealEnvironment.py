@@ -9,8 +9,8 @@ from ArucoDetectionCamera import ArucoDetectionCamera
 class RealEnvironment(gym.Env):
     def __init__(self, robot_interface: RobotInterface, camera: ArucoDetectionCamera, max_actions: int):
         super(RealEnvironment, self).__init__()
-        self.action_space = gym.spaces.Box(low=-5, high=5, shape=(6,), dtype=float)  # The action space
-        self.observation_space = gym.spaces.Box(low=0, high=180, shape=(6,), dtype=float)  # The observation space
+        self.action_space = gym.spaces.Box(low=40, high=70, shape=(6,), dtype=float)  # The action space
+        self.observation_space = gym.spaces.Box(low=40, high=70, shape=(6,), dtype=float)  # The observation space
 
         self.robot_interface = robot_interface  # The interface to the robot
         self.camera = camera  # The camera to detect the marker
@@ -19,8 +19,8 @@ class RealEnvironment(gym.Env):
         self.np_random = None  # Random number generator (Needed for the model to run but not used)
         self.joint_indices = [7, 5, 3, 6, 4, 2]
 
-        self.target_angles = np.random.randint(0, 5, 6)  # TODO: Remove this when the reward function is implemented
         self.episode_score = 0  # The score of the episode
+        self.scores = []  # The scores of the episodes
         self.observation = np.zeros(6)  # The observation of the environment
 
         self.actions_counter = 0  # Counter for the number of actions taken
@@ -47,6 +47,8 @@ class RealEnvironment(gym.Env):
         angles = robot_new_state[self.joint_indices].astype(int)  # The angles of the joints after applying the action
         weight = robot_new_state[-1].astype(float)  # This will get the force measured in the arduino sketch file
         weight = weight if weight > 0 else 0  # If the force is negative, set it to 0
+        print(f"Angles from arduino: {angles}")
+        print(f"Weight from arduino: {weight} grams")
 
         # Calculate the velocity developed while applying the action
         detected_flag = True
@@ -65,7 +67,7 @@ class RealEnvironment(gym.Env):
 
             # Calculate the distance on the y-axis
             dy = self.camera.getMarkerDistanceY(previous_position, current_position)
-            print("Displacement on the y-axis: {: .2f} cm". format(dy))
+            print("Displacement on the y-axis: {: .2f} cm". format(dy * 100))
 
         self.actions_counter += 1  # Increment the action counter
 
@@ -93,9 +95,10 @@ class RealEnvironment(gym.Env):
 
         time.sleep(0.5)  # Add a time delay so the actions are applied more smoothly
 
-        if done:
-            print(f"Total reward for current episode: {self.episode_score}")
         print('---------------')
+        if done:
+            print(f"Total reward for current episode: {self.episode_score}\n")
+            self.scores.append(self.episode_score)  # Append the score to the list of scores
         return self.observation, reward, done, truncated, info
 
     def seed(self, seed=None):
@@ -108,7 +111,6 @@ class RealEnvironment(gym.Env):
         """
         print("Resetting the environment...")
         self.robot_interface.reset_robot()  # Reset the robot
-        time.sleep(5)
 
         self.robot_state = np.array([self.robot_interface.get_state()]).squeeze()
 
@@ -121,6 +123,8 @@ class RealEnvironment(gym.Env):
         # Not required if the weight is not in the observation space
         weight = self.robot_state[-1].astype(float)  # This will get the weight measured in the arduino sketch file
         weight = weight if weight > 0 else 0  # If the weight is negative, set it to 0
+        print(f"Angles from arduino: {angles}")
+        print(f"Weight from arduino: {weight} grams")
 
         # Set the velocity to 0 for the observation vector when resetting the robot
         velocity = 0
@@ -155,9 +159,8 @@ class RealEnvironment(gym.Env):
 
         return velocity - (0.1 * axis_displacement) - (0.001 * weight) + 0.1
 
-    @staticmethod
-    def is_done(weight: float, detection_flag: bool, step_counter: int) -> bool:
+    def is_done(self, weight: float, detection_flag: bool, step_counter: int) -> bool:
         # TODO: Implement the done function
         # Probably the done function will check if the robot has fallen by checking force measurement
         # When the robot falls the episode is done and the robot and the episode score are reset
-        return weight > 200 or not detection_flag or step_counter == 20
+        return weight > 200 or not detection_flag or step_counter == self.max_actions
