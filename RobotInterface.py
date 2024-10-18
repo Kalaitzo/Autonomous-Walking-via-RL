@@ -26,14 +26,12 @@ class RobotInterface:
         if self.arduino.in_waiting > 0:
             response = self.arduino.readline().decode('utf-8').rstrip()
             self.robot_state = response.split(",")
-            print(f"Angles from arduino: {self.robot_state[:-1]}")
-            print(f"Weight from arduino: {self.robot_state[-1]}")
 
         return self.robot_state
 
     def reset_robot(self) -> None:
         self.arduino.write(b"reset\n")
-        time.sleep(0.5)
+        time.sleep(3)
 
         if self.arduino.in_waiting > 0:
             response = self.arduino.readline().decode('utf-8').rstrip()
