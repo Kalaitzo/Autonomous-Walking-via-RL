@@ -94,12 +94,12 @@ class ArucoDetectionCamera:
         cv2.destroyAllWindows()
 
     @staticmethod
-    def getMarkerDistanceY(previous_position: np.ndarray, current_position: np.ndarray):
+    def getMarkerDistanceY(initial_position: np.ndarray, current_position: np.ndarray):
         """
         Get the distance on the y-axis
-        :param previous_position:
+        :param initial_position:
         :param current_position:
         :return: The distance on the y-axis
         """
-        displacement_y = abs(current_position[1] - previous_position[1])
+        displacement_y = abs(current_position[1] - initial_position[1])
         return displacement_y
