@@ -6,8 +6,8 @@ from RealEnvironment import RealEnvironment
 from ArucoDetectionCamera import ArucoDetectionCamera
 
 key = 0  # The key to be pressed
-training_cycles = 1  # Number of games to play
-time_steps = 100  # Number of steps to take in each training cycle
+training_cycles = 10  # Number of games to play
+time_steps = 1000  # Number of steps to take in each training cycle
 load_model = False  # Whether to load a model or not
 
 # Make the connection to the robot (python - arduino)
@@ -30,10 +30,13 @@ for i in range(training_cycles):
     # Before beginning the episode, check what the camera sees
     while True:
         aruco_camera.testCamera()
-
+        initial_position = None
         key = cv2.waitKey(1)
         if key == 27:
-            aruco_camera.closeWindows()
+            while initial_position is None:
+                initial_position, _ = aruco_camera.getMarkerPositionAndTime()  # Get the initial position of the marker
+            real_env.set_initial_position(initial_position)  # Set the initial position of the marker
+            aruco_camera.closeWindows()  # Close the windows
             break
 
     # This will call the step from the environment 1000 times, or until the episode is done
@@ -48,7 +51,7 @@ for i in range(training_cycles):
     model.learn(total_timesteps=time_steps)
 
     # Save the model
-    # model.save("models/sac_robot")
+    model.save("models/sac_robot")
 
     # Get the scores from the environment
     scores = real_env.scores
@@ -56,7 +59,7 @@ for i in range(training_cycles):
     # Plot the scores
     filename = "Robot_Scores.png"
     figure_file = "plots/" + filename
-    x = [i + 1 for i in range(len(scores))]
+    x = [episode + 1 for episode in range(len(scores))]
     plot_learning_curve(x, scores, figure_file)
 
     # Reset the key
