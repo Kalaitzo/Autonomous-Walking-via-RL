@@ -6,9 +6,9 @@ from RealEnvironment import RealEnvironment
 from ArucoDetectionCamera import ArucoDetectionCamera
 
 key = 0  # The key to be pressed
-training_cycles = 10  # Number of games to play
-time_steps = 1000  # Number of steps to take in each training cycle
-load_model = False  # Whether to load a model or not
+training_cycles = 3  # Number of games to play
+time_steps = 500  # Number of steps to take in each training cycle
+load_model = True  # Whether to load a model or not
 
 # Make the connection to the robot (python - arduino)
 robot = RobotInterface(SERIAL_PORT='/dev/cu.usbmodem11301')
@@ -22,9 +22,9 @@ real_env = RealEnvironment(robot, aruco_camera, max_actions=100)
 
 # Create the learning model (SAC)
 if load_model:
-    model = SAC.load("models/sac_robot")
+    model = SAC.load("models/sac_robot", env=real_env)
 else:
-    model = SAC("MlpPolicy", real_env, batch_size=25, verbose=1, learning_starts=25)
+    model = SAC("MlpPolicy", real_env, batch_size=50, verbose=1, learning_starts=50)
 
 for i in range(training_cycles):
     # Before beginning the episode, check what the camera sees
