@@ -9,15 +9,18 @@ from ArucoDetectionCamera import ArucoDetectionCamera
 class RealEnvironment(gym.Env):
     def __init__(self, robot_interface: RobotInterface, camera: ArucoDetectionCamera, max_actions: int):
         super(RealEnvironment, self).__init__()
-        self.action_space = gym.spaces.Box(low=45, high=65, shape=(6,), dtype=int)  # The action space
-        self.observation_space = gym.spaces.Box(low=45, high=75, shape=(6,), dtype=int)  # The observation space
-
+        self.action_space = gym.spaces.Box(low=np.array([45, 45, 45, 45, 50, 45]),
+                                           high=np.array([65, 65, 65, 65, 70, 65]),
+                                           dtype=int)  # The action space
+        self.observation_space = gym.spaces.Box(low=np.array([45, 45, 45, 45, 50, 45]),
+                                                high=np.array([65, 65, 65, 65, 70, 65]),
+                                                dtype=int)  # The observation space
         self.robot_interface = robot_interface  # The interface to the robot
         self.camera = camera  # The camera to detect the marker
 
         self.robot_state = None  # The state of the robot
         self.np_random = None  # Random number generator (Needed for the model to run but not used)
-        self.joint_indices = [7, 5, 3, 6, 4, 2]
+        self.joint_indices = [0, 1, 2, 3, 4, 5]
 
         self.episode_score = 0  # The score of the episode
         self.scores = []  # The scores of the episodes
