@@ -1,8 +1,8 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import pybullet as p
 import os
 import cv2
+import numpy as np
+import pybullet as p
+import matplotlib.pyplot as plt
 
 
 def plot_learning_curve(x, scores, figure_file):
