@@ -1,5 +1,4 @@
 import time
-
 from utils import *
 
 
@@ -14,6 +13,7 @@ class ArucoDetectionCamera:
         self.directory = directory  # Directory to save the image
         self.velocity = 0  # Velocity of the marker
         self.center_position = None  # Center position of the marker
+        self.center_rotation = None  # Center rotation of the marker
         self.current_time = 0  # Current time
 
         # Load the camera calibration parameters
@@ -29,7 +29,7 @@ class ArucoDetectionCamera:
         """
         createArucoMarker(self.marker_id, self.side_pixels, directory)
 
-    def getMarkerPositionAndTime(self) -> (np.ndarray, float):
+    def getMarkerPositionRotationAndTime(self) -> (np.ndarray, np.ndarray, float):
         """
         Get the position of the marker
         :return:
@@ -57,17 +57,20 @@ class ArucoDetectionCamera:
 
             self.center_position = t_vecs[0][0]
 
+            self.center_rotation = r_vecs[0][0]
+
             cv2.imshow("Aruco Marker Detection", frame)
 
             cv2.waitKey(1)
 
-            return self.center_position, self.current_time
+            return self.center_position, self.center_rotation, self.current_time
 
         else:
             # In case the marker is not detected, return the previous position
             self.current_time = time.time()  # Get the current time
             self.center_position = None
-            return self.center_position, self.current_time
+            self.center_rotation = None
+            return self.center_position, self.center_rotation, self.current_time
 
     def getMarkerVelocity(self,
                           previous_position: np.ndarray, previous_time: float,
@@ -102,4 +105,23 @@ class ArucoDetectionCamera:
         :return: The distance on the y-axis
         """
         displacement_y = abs(current_position[1] - initial_position[1])
+
         return displacement_y
+
+    @staticmethod
+    def getMarkerRotationZ(initial_rotation: np.ndarray, current_rotation: np.ndarray) -> np.ndarray:
+        """
+        Get the rotation on the z-axis
+        :param initial_rotation:
+        :param current_rotation:
+        :return:
+        """
+        initial_rotation_matrix = cv2.Rodrigues(initial_rotation)[0]
+
+        next_rotation_matrix = cv2.Rodrigues(current_rotation)[0]
+
+        relative_rotation_matrix = np.dot(initial_rotation_matrix.T, next_rotation_matrix)
+
+        relative_rotation_degrees = np.degrees(cv2.Rodrigues(relative_rotation_matrix)[0])
+
+        return abs(relative_rotation_degrees[2][0])
