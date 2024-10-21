@@ -17,19 +17,16 @@ class RealEnvironment(gym.Env):
                                                 dtype=int)  # The observation space
         self.robot_interface = robot_interface  # The interface to the robot
         self.camera = camera  # The camera to detect the marker
-
         self.robot_state = None  # The state of the robot
         self.np_random = None  # Random number generator (Needed for the model to run but not used)
         self.joint_indices = [0, 1, 2, 3, 4, 5]
-
         self.episode_score = 0  # The score of the episode
         self.scores = []  # The scores of the episodes
         self.observation = np.zeros(6)  # The observation of the environment
-
         self.actions_counter = 0  # Counter for the number of actions taken
         self.max_actions = max_actions  # Max actions (algorithm steps) per each episode
-
         self.initial_position = None  # The initial position of the marker
+        self.initial_rotation = None  # The initial rotation of the marker
 
     def step(self, action: list) -> tuple:
         """
@@ -38,13 +35,12 @@ class RealEnvironment(gym.Env):
         :return: The new state, the reward, whether the episode is done, and additional information
         """
         # Get the position of the marker and the time before applying the action
-        previous_position, previous_time = self.camera.getMarkerPositionAndTime()
+        previous_position, _, previous_time = self.camera.getMarkerPositionRotationAndTime()
 
-        # print("Applying action...")
         self.robot_interface.send_action(self.joint_indices, action)  # Send the action to the robot to be executed
 
         # Get the position of the marker and the time after applying the action
-        current_position, current_time = self.camera.getMarkerPositionAndTime()
+        current_position, current_rotation, current_time = self.camera.getMarkerPositionRotationAndTime()
 
         # Robot state will have all the information gathered from the robot [angles, velocities, etc.]
         robot_new_state = np.array(self.robot_interface.get_state()).squeeze()  # Get everything from the robot
@@ -58,8 +54,9 @@ class RealEnvironment(gym.Env):
         # Calculate the velocity developed while applying the action
         detected_flag = True
         if previous_position is None or current_position is None:
-            velocity = 0
             dy = 0
+            velocity = 0
+            z_rotation = 0
             detected_flag = False
             print("Did not detect the marker")
         else:
@@ -75,29 +72,24 @@ class RealEnvironment(gym.Env):
             dy = self.camera.getMarkerDistanceY(self.initial_position, current_position)
             print("Displacement on the y-axis: {: .2f} m". format(dy))
 
+            # Calculate the rotation on the z-axis from the initial rotation
+            z_rotation = self.camera.getMarkerRotationZ(self.initial_rotation, current_rotation)
+            print("Rotation on the z-axis: {: .2f} degrees". format(z_rotation))
+
         self.actions_counter += 1  # Increment the action counter
 
-        dq = angles - self.observation  # Calculate the difference in angles
+        dq = np.sum(np.abs(angles - self.observation))  # Calculate the difference in angles
         self.observation = angles  # Update the observation
 
-        # - The robot's speed: v  (m/s - Reward)
-        # - The weight measured by the sensor: w  (grams - Penalty)
-        # - The action taken by the robot: dq  (degree - Penalty)
-        # - The distance from the movement axis: dy (m - Penalty)
-        # The reward returned is the reward for each step.
-        # The algorithm also calculates the episode reward with sum() when the value done is True
-        reward = self.calculate_reward(velocity, dy, dq, weight)  # Compute the reward
-        self.episode_score += reward
+        reward = self.calculate_reward(velocity, dy, dq, weight, z_rotation)  # Compute the reward for each step
+        self.episode_score += reward  # Update the episode score
 
         # Check if the episode is done.
-        # Done when: Either the weight is greater than 500 g, the marker is not detected, or 10 steps were made
         done = self.is_done(weight, detected_flag, self.actions_counter)
 
-        truncated = self.actions_counter == self.max_actions  # Check reached the max episode steps (20)
+        truncated = self.actions_counter == self.max_actions  # Check reached the max episode steps
 
         info = {}  # Additional information (Needed for the model to run but not used)
-
-        # time.sleep(0.5)  # Add a time delay so the actions are applied more smoothly
 
         print('---------------')
         if done:
@@ -119,7 +111,7 @@ class RealEnvironment(gym.Env):
         self.robot_state = np.array([self.robot_interface.get_state()]).squeeze()
 
         # Get the marker position after resetting the robot for the observation vector
-        current_position, current_time = self.camera.getMarkerPositionAndTime()
+        self.initial_position, self.initial_rotation, _ = self.camera.getMarkerPositionRotationAndTime()
 
         # Get only the moving angles
         angles = self.robot_state[self.joint_indices].astype(int)  # The angles of the joints after applying the action
@@ -129,9 +121,6 @@ class RealEnvironment(gym.Env):
         weight = weight if weight > 0 else 0  # If the weight is negative, set it to 0
         print(f"Angles from arduino: {angles}")
         print(f"Weight from arduino: {weight} grams")
-
-        # Set the velocity to 0 for the observation vector when resetting the robot
-        velocity = 0
 
         self.observation = angles
 
@@ -144,27 +133,28 @@ class RealEnvironment(gym.Env):
         print('---------------')
         return self.observation, info
 
-    @staticmethod
-    def calculate_reward(velocity: float, axis_displacement: float, dq: np.ndarray, weight: float) -> float:
-        # The actual reward function should take in account the following:
-        # - The velocity of the robot (m/s)
-        # - The weight measured by the load cell (grams)
-        # - The action taken by the robot (degrees)
-        # - The displacement from the axis of movement (m)
+    def calculate_reward(self, velocity: float, y_displacement: float, dq: np.ndarray, weight: float,z_rotation: float)\
+            -> float:
+        # - The robot's speed: v (m/s - Reward)
+        # - The weight measured by the sensor: weight (grams - Penalty)
+        # - The action taken by the robot: dq (degree - Penalty)
+        # - The distance from the movement axis: dy (m - Penalty)
+        # - The rotation on the z-axis: z_rotation (degrees - Penalty)
         # - A small reward for not falling (r = e.g. 0.1)
-        # The force  and the action should be minimized
         # e.g. reward = v_x - w - 0.02 * sum(a_i) + r
+        old_min = 0
+        old_max = 360
 
-        # Convert the dq to the actual int angle difference
-        normalized_dq = np.linalg.norm(dq)
+        new_min = 0
+        new_max = -0.5
+        normalized_rotation = new_min + ((z_rotation - old_min)/(old_max - old_min)) * (new_max - new_min)
 
-        return velocity - (0.1 * axis_displacement) - (0.001 * weight) + 0.1
+        # TODO: If I decide to use this I have to set old and new min and max for the dq
+        normalized_dq = new_min + ((dq - old_min)/(old_max - old_min)) * (new_max - new_min)
+
+        return ((2 * velocity) - (0.1 * y_displacement) - (0.001 * weight) + (0.05 * self.actions_counter)
+                - normalized_rotation)
 
     def is_done(self, weight: float, detection_flag: bool, step_counter: int) -> bool:
-        # TODO: Implement the done function
-        # Probably the done function will check if the robot has fallen by checking force measurement
-        # When the robot falls the episode is done and the robot and the episode score are reset
-        return weight > 300 or not detection_flag or step_counter == self.max_actions
-
-    def set_initial_position(self, position: tuple):
-        self.initial_position = position
+        # When the robot falls, the episode is done, and the environment is reset
+        return weight > 200 or not detection_flag or step_counter == self.max_actions
