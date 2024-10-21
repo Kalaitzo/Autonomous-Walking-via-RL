@@ -6,9 +6,11 @@ from RealEnvironment import RealEnvironment
 from ArucoDetectionCamera import ArucoDetectionCamera
 
 key = 0  # The key to be pressed
-training_cycles = 3  # Number of games to play
-time_steps = 500  # Number of steps to take in each training cycle
 load_model = True  # Whether to load a model or not
+time_steps = 500  # Number of steps to take in each training cycle
+training_cycles = 3  # Number of games to play
+training_cycle = 9  # The number of the training cycle that is about to start
+load_time_steps = (training_cycle - 1) * time_steps  # Amount of time-steps the saved model has been trained for
 
 # Make the connection to the robot (python - arduino)
 robot = RobotInterface(SERIAL_PORT='/dev/cu.usbmodem11301')
@@ -22,7 +24,7 @@ real_env = RealEnvironment(robot, aruco_camera, max_actions=100)
 
 # Create the learning model (SAC)
 if load_model:
-    model = SAC.load("models/sac_robot", env=real_env)
+    model = SAC.load(f"models/sac_robot{load_time_steps}", env=real_env)
 else:
     model = SAC("MlpPolicy", real_env, batch_size=50, verbose=1, learning_starts=50)
 
@@ -30,12 +32,8 @@ for i in range(training_cycles):
     # Before beginning the episode, check what the camera sees
     while True:
         aruco_camera.testCamera()
-        initial_position = None
         key = cv2.waitKey(1)
-        if key == 27:
-            while initial_position is None:
-                initial_position, _ = aruco_camera.getMarkerPositionAndTime()  # Get the initial position of the marker
-            real_env.set_initial_position(initial_position)  # Set the initial position of the marker
+        if key == 27:  # If the key is ESC
             aruco_camera.closeWindows()  # Close the windows
             break
 
@@ -48,16 +46,16 @@ for i in range(training_cycles):
     # - The step method generates the robot_new_state, reward, done, _, and, _
     # - The model saves the new the returned values
     # - The model learns
-    model.learn(total_timesteps=time_steps)
+    model.learn(total_timesteps=time_steps, reset_num_timesteps=False)
 
     # Save the model
-    model.save("models/sac_robot")
+    model.save(f"models/sac_robot{(i + training_cycle) * time_steps}")
 
     # Get the scores from the environment
     scores = real_env.scores
 
     # Plot the scores
-    filename = "Robot_Scores.png"
+    filename = f"Robot_Scores_{(i + training_cycle) * time_steps}.png"
     figure_file = "plots/" + filename
     x = [episode + 1 for episode in range(len(scores))]
     plot_learning_curve(x, scores, figure_file)
