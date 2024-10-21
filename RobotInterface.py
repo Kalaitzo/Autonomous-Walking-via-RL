@@ -31,7 +31,7 @@ class RobotInterface:
 
     def reset_robot(self) -> None:
         self.arduino.write(b"reset\n")
-        time.sleep(3)
+        time.sleep(5)
 
         if self.arduino.in_waiting > 0:
             response = self.arduino.readline().decode('utf-8').rstrip()
