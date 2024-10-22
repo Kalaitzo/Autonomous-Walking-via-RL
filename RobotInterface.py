@@ -20,8 +20,9 @@ class RobotInterface:
         print(f"Command sent to Arduino: {action.strip()}")
 
     def get_state(self) -> list:
+        time.sleep(0.5)
         self.arduino.write(b"state\n")
-        time.sleep(0.8)
+        time.sleep(0.5)
 
         if self.arduino.in_waiting > 0:
             response = self.arduino.readline().decode('utf-8').rstrip()
