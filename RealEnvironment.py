@@ -9,11 +9,11 @@ from ArucoDetectionCamera import ArucoDetectionCamera
 class RealEnvironment(gym.Env):
     def __init__(self, robot_interface: RobotInterface, camera: ArucoDetectionCamera, max_actions: int):
         super(RealEnvironment, self).__init__()
-        self.action_space = gym.spaces.Box(low=np.array([45, 45, 45, 45, 50, 45]),
-                                           high=np.array([65, 65, 65, 65, 70, 65]),
+        self.action_space = gym.spaces.Box(low=np.array([55, 40, 70, 25, 55, 40]),
+                                           high=np.array([75, 60, 90, 45, 75, 60]),
                                            dtype=int)  # The action space
-        self.observation_space = gym.spaces.Box(low=np.array([45, 45, 45, 45, 50, 45]),
-                                                high=np.array([65, 65, 65, 65, 70, 65]),
+        self.observation_space = gym.spaces.Box(low=np.array([55, 40, 70, 25, 55, 40]),
+                                                high=np.array([75, 60, 90, 45, 75, 60]),
                                                 dtype=int)  # The observation space
         self.robot_interface = robot_interface  # The interface to the robot
         self.camera = camera  # The camera to detect the marker
@@ -82,6 +82,7 @@ class RealEnvironment(gym.Env):
         self.observation = angles  # Update the observation
 
         reward = self.calculate_reward(velocity, dy, dq, weight, z_rotation)  # Compute the reward for each step
+        print(f"Reward for this action: {reward}")
         self.episode_score += reward  # Update the episode score
 
         # Check if the episode is done.
@@ -133,7 +134,8 @@ class RealEnvironment(gym.Env):
         print('---------------')
         return self.observation, info
 
-    def calculate_reward(self, velocity: float, y_displacement: float, dq: np.ndarray, weight: float,z_rotation: float)\
+    @staticmethod
+    def calculate_reward(velocity: float, y_displacement: float, dq: np.ndarray, weight: float, z_rotation: float)\
             -> float:
         # - The robot's speed: v (m/s - Reward)
         # - The weight measured by the sensor: weight (grams - Penalty)
@@ -141,19 +143,17 @@ class RealEnvironment(gym.Env):
         # - The distance from the movement axis: dy (m - Penalty)
         # - The rotation on the z-axis: z_rotation (degrees - Penalty)
         # - A small reward for not falling (r = e.g. 0.1)
-        # e.g. reward = v_x - w - 0.02 * sum(a_i) + r
         old_min = 0
-        old_max = 360
+        old_max = 180
 
         new_min = 0
-        new_max = -0.5
+        new_max = -0.4
         normalized_rotation = new_min + ((z_rotation - old_min)/(old_max - old_min)) * (new_max - new_min)
 
         # TODO: If I decide to use this I have to set old and new min and max for the dq
         normalized_dq = new_min + ((dq - old_min)/(old_max - old_min)) * (new_max - new_min)
 
-        return ((2 * velocity) - (0.1 * y_displacement) - (0.001 * weight) + (0.05 * self.actions_counter)
-                - normalized_rotation)
+        return (5 * velocity) - (0.001 * weight) - y_displacement - normalized_rotation + 0.1
 
     def is_done(self, weight: float, detection_flag: bool, step_counter: int) -> bool:
         # When the robot falls, the episode is done, and the environment is reset
