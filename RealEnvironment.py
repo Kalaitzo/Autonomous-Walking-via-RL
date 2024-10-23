@@ -1,4 +1,3 @@
-import time
 import numpy as np
 import gymnasium as gym
 from RobotInterface import RobotInterface
@@ -51,6 +50,11 @@ class RealEnvironment(gym.Env):
         print(f"Weight from arduino: {weight} grams")
         weight = weight if weight > 0 else 0  # If the force is negative, set it to 0
 
+        rounded_action = [int(round(a_i)) for a_i in action]
+        communication_error = np.any(angles) != np.any(rounded_action)  # Check for arduino communication error
+        if communication_error:
+            print("Angles from arduino don't match the action - Reset")
+
         # Calculate the velocity developed while applying the action
         detected_flag = True
         if previous_position is None or current_position is None:
@@ -86,7 +90,7 @@ class RealEnvironment(gym.Env):
         self.episode_score += reward  # Update the episode score
 
         # Check if the episode is done.
-        done = self.is_done(weight, detected_flag, self.actions_counter)
+        done = self.is_done(weight, detected_flag, self.actions_counter, communication_error)
 
         truncated = self.actions_counter == self.max_actions  # Check reached the max episode steps
 
@@ -155,6 +159,6 @@ class RealEnvironment(gym.Env):
 
         return (5 * velocity) - (0.001 * weight) - y_displacement - normalized_rotation + 0.1
 
-    def is_done(self, weight: float, detection_flag: bool, step_counter: int) -> bool:
+    def is_done(self, weight: float, detection_flag: bool, step_counter: int, communication_error: bool) -> bool:
         # When the robot falls, the episode is done, and the environment is reset
-        return weight > 200 or not detection_flag or step_counter == self.max_actions
+        return weight > 200 or not detection_flag or step_counter == self.max_actions or communication_error
