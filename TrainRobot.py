@@ -9,7 +9,7 @@ key = 0  # The key to be pressed
 attempt = 2  # The amount of learning attempts
 time_steps = 500  # Number of steps to take in each training cycle
 training_cycles = 3  # Number of games to play
-training_cycle = 4  # The number of the training cycle that is about to start
+training_cycle = 16  # The number of the training cycle that is about to start
 load_time_steps = (training_cycle - 1) * time_steps  # Amount of time-steps the saved model has been trained for
 
 models_dir = "models/"  # The models directory
@@ -44,15 +44,15 @@ for i in range(training_cycles):
             aruco_camera.closeWindows()  # Close the windows
             break
 
-    # This will call the step from the environment 1000 times, or until the episode is done
+    # This will call the step from the environment 500 times
     # When the episode is done or before starting the steps the reset method is called
     # So the following happens:
     # - The model resets the environment
     # - The model chooses the action
     # - The action is applied to the robot by the RealEnvironment's step method
-    # - The step method generates the robot_new_state, reward, done, _, and, _
+    # - The step method generates the robot_new_state, reward, done
     # - The model saves the new the returned values
-    # - The model learns
+    # - The model learns if the amount of time-steps is larger than the learning starts value
     model.learn(total_timesteps=time_steps, reset_num_timesteps=False)
 
     model_file = f"sac_robot{(i + training_cycle) * time_steps}"
