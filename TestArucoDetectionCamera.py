@@ -32,7 +32,7 @@ while True:
         print("Marker not detected - Displacement is 0 - Rotation is 0")
         continue
 
-    relative_rotation_degrees = aruco_camera.getMarkerRotationZ(initial_rotation, next_rotation)
+    relative_rotation_degrees = aruco_camera.getMarkerRotation(initial_rotation, next_rotation)
 
     # Print the velocity of the marker with 2 decimal places
     print("=====================================")
@@ -40,9 +40,9 @@ while True:
     print("Y-axis displacement: {:.2f} cm".format(100 * (next_position[1] - initial_position[1])))
     print("Z-axis displacement: {:.2f} cm".format(100 * (next_position[2] - initial_position[2])))
     print("=====================================\n")
-    print("X-axis rotation: {:.2f} degrees".format(relative_rotation_degrees[0][0]))
-    print("Y-axis rotation: {:.2f} degrees".format(relative_rotation_degrees[1][0]))
-    print("Z-axis rotation: {:.2f} degrees".format(relative_rotation_degrees[2][0]))
+    print("X-axis rotation: {:.2f} degrees".format(relative_rotation_degrees[0]))
+    print("Y-axis rotation: {:.2f} degrees".format(relative_rotation_degrees[1]))
+    print("Z-axis rotation: {:.2f} degrees".format(relative_rotation_degrees[2]))
     print("=====================================\n")
 
     time.sleep(1)  # Sleep for 1 second
