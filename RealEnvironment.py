@@ -1,3 +1,5 @@
+import math
+import time
 import numpy as np
 import gymnasium as gym
 from RobotInterface import RobotInterface
@@ -8,12 +10,20 @@ from ArucoDetectionCamera import ArucoDetectionCamera
 class RealEnvironment(gym.Env):
     def __init__(self, robot_interface: RobotInterface, camera: ArucoDetectionCamera, max_actions: int):
         super(RealEnvironment, self).__init__()
-        self.action_space = gym.spaces.Box(low=np.array([55, 40, 70, 25, 55, 40]),
-                                           high=np.array([75, 60, 90, 45, 75, 60]),
-                                           dtype=int)  # The action space
-        self.observation_space = gym.spaces.Box(low=np.array([55, 40, 70, 25, 55, 40]),
-                                                high=np.array([75, 60, 90, 45, 75, 60]),
-                                                dtype=int)  # The observation space
+        self.action_space = gym.spaces.Box(low=np.array([63, 35, 75, 30, 55, 40]),
+                                           high=np.array([67, 65, 85, 40, 75, 60]),
+                                           dtype=float)  # The action space
+        self.observation_space = gym.spaces.Box(low=np.array([63, 35, 75, 30, 55, 40,  # Servo Angles
+                                                              -1, -1, -1,  # Marker position
+                                                              -180, -180, -180,  # Marker rotation
+                                                              -1  # Marker velocity on the x-axis
+                                                              ]),
+                                                high=np.array([67, 65, 85, 40, 75, 60,  # Servo Angles
+                                                               1, 1, 1,  # Marker position
+                                                               180, 180, 180,  # Marker rotation
+                                                               1  # Marker velocity on the x-axis
+                                                               ]),
+                                                dtype=float)  # The observation space
         self.robot_interface = robot_interface  # The interface to the robot
         self.camera = camera  # The camera to detect the marker
         self.robot_state = None  # The state of the robot
@@ -26,6 +36,8 @@ class RealEnvironment(gym.Env):
         self.max_actions = max_actions  # Max actions (algorithm steps) per each episode
         self.initial_position = None  # The initial position of the marker
         self.initial_rotation = None  # The initial rotation of the marker
+        self.marker_position = None  # The position of the marker with respect to the initial position
+        self.marker_rotation = None  # The rotation of the marker with respect to the initial rotation
 
     def step(self, action: list) -> tuple:
         """
@@ -37,6 +49,7 @@ class RealEnvironment(gym.Env):
         previous_position, _, previous_time = self.camera.getMarkerPositionRotationAndTime()
 
         self.robot_interface.send_action(self.joint_indices, action)  # Send the action to the robot to be executed
+        time.sleep(0.5)  # Wait for the robot to execute the action
 
         # Get the position of the marker and the time after applying the action
         current_position, current_rotation, current_time = self.camera.getMarkerPositionRotationAndTime()
@@ -51,43 +64,48 @@ class RealEnvironment(gym.Env):
         weight = weight if weight > 0 else 0  # If the force is negative, set it to 0
 
         rounded_action = [int(round(a_i)) for a_i in action]
-        communication_error = np.any(angles) != np.any(rounded_action)  # Check for arduino communication error
+        communication_error = np.any(angles != rounded_action)  # Check for arduino communication error
         if communication_error:
             print("Angles from arduino don't match the action - Reset")
 
         # Calculate the velocity developed while applying the action
         detected_flag = True
         if previous_position is None or current_position is None:
-            dy = 0
-            velocity = 0
-            z_rotation = 0
+            self.marker_position = np.array([0, 0, 0])
+            self.marker_rotation = np.array([0, 0, 0])
+            x_velocity = 0
+            dq = np.array([0, 0, 0, 0, 0, 0])
             detected_flag = False
             print("Did not detect the marker")
         else:
-            # Calculate the velocity of the marker
-            velocity = self.camera.getMarkerVelocity(previous_position, previous_time,
-                                                     current_position, current_time)
+            # Calculate the velocity of the marker on the x-axis
+            x_velocity = self.camera.getMarkerVelocity(previous_position, previous_time,
+                                                       current_position, current_time)
 
             # Flip the velocity to match the direction of movement which is towards the -x
-            velocity = -velocity
-            print("Velocity of the marker: {: .2f} m/s".format(velocity))
+            print("Velocity of the marker: {: .2f} m/s".format(x_velocity))
 
-            # Calculate the distance on the y-axis from the initial position
-            dy = self.camera.getMarkerDistanceY(self.initial_position, current_position)
-            print("Displacement on the y-axis: {: .2f} m". format(dy))
+            # Get the marker position with respect to the initial position
+            self.marker_position = self.camera.getMarkerPosition(self.initial_position, current_position)
+            y_displacement = self.marker_position[1]  # The displacement on the y-axis
+            print("Displacement on the y-axis: {: .2f} cm".format(100 * y_displacement))
 
-            # Calculate the rotation on the z-axis from the initial rotation
-            z_rotation = self.camera.getMarkerRotationZ(self.initial_rotation, current_rotation)
-            print("Rotation on the z-axis: {: .2f} degrees". format(z_rotation))
+            # Calculate the marker rotation with respect to the initial position
+            self.marker_rotation = self.camera.getMarkerRotation(self.initial_rotation, current_rotation)
+            yaw = abs(self.marker_rotation[2])  # The rotation on the z-axis
+            print("Rotation around the z-axis: {: .2f} degrees".format(yaw))
+
+            dq = np.sum(np.abs(angles - self.observation[:6]))  # Calculate the difference in angles
 
         self.actions_counter += 1  # Increment the action counter
 
-        dq = np.sum(np.abs(angles - self.observation))  # Calculate the difference in angles
-        self.observation = angles  # Update the observation
+        self.observation = np.hstack([angles, self.marker_position, self.marker_rotation, x_velocity])
 
-        reward = self.calculate_reward(velocity, dy, dq, weight, z_rotation)  # Compute the reward for each step
-        print(f"Reward for this action: {reward}")
+        # Compute the reward for each step
+        reward = self.calculate_reward(x_velocity, self.marker_position[1], dq, weight, self.marker_position[2])
         self.episode_score += reward  # Update the episode score
+        print('---------------')
+        print(f"Reward for this action: {reward}")
 
         # Check if the episode is done.
         done = self.is_done(weight, detected_flag, self.actions_counter, communication_error)
@@ -120,14 +138,20 @@ class RealEnvironment(gym.Env):
 
         # Get only the moving angles
         angles = self.robot_state[self.joint_indices].astype(int)  # The angles of the joints after applying the action
+        print(f"Angles from arduino: {angles}")
 
         # Not required if the weight is not in the observation space
         weight = self.robot_state[-1].astype(float)  # This will get the weight measured in the arduino sketch file
-        weight = weight if weight > 0 else 0  # If the weight is negative, set it to 0
-        print(f"Angles from arduino: {angles}")
         print(f"Weight from arduino: {weight} grams")
 
-        self.observation = angles
+        self.marker_position = np.array([0, 0, 0])  # The position of the marker with respect to the initial position
+
+        self.marker_rotation = np.array([0, 0, 0])  # The rotation of the marker with respect to the initial rotation
+
+        x_velocity = 0  # The velocity of the marker on the x-axis
+
+        # Update the observation
+        self.observation = np.hstack([angles, self.marker_position, self.marker_rotation, x_velocity])
 
         info = {}
 
@@ -138,9 +162,8 @@ class RealEnvironment(gym.Env):
         print('---------------')
         return self.observation, info
 
-    @staticmethod
-    def calculate_reward(velocity: float, y_displacement: float, dq: np.ndarray, weight: float, z_rotation: float)\
-            -> float:
+    def calculate_reward(self, velocity: float, y_displacement: np.ndarray, dq: np.ndarray, weight: float,
+                         z_rotation: np.ndarray) -> float:
         # - The robot's speed: v (m/s - Reward)
         # - The weight measured by the sensor: weight (grams - Penalty)
         # - The action taken by the robot: dq (degree - Penalty)
@@ -152,12 +175,17 @@ class RealEnvironment(gym.Env):
 
         new_min = 0
         new_max = -0.4
-        normalized_rotation = new_min + ((z_rotation - old_min)/(old_max - old_min)) * (new_max - new_min)
+        normalized_rotation = new_min + ((z_rotation - old_min) / (old_max - old_min)) * (new_max - new_min)
+
+        velocity_target = -2  # cm/s
+        velocity_error = abs(100 * velocity - velocity_target)
+        velocity_reward = 5 * math.exp(-0.8 * velocity_error) - 1
 
         # TODO: If I decide to use this I have to set old and new min and max for the dq
-        normalized_dq = new_min + ((dq - old_min)/(old_max - old_min)) * (new_max - new_min)
+        normalized_dq = new_min + ((dq - old_min) / (old_max - old_min)) * (new_max - new_min)
 
-        return (5 * velocity) - (0.001 * weight) - y_displacement - normalized_rotation + 0.1
+        return (velocity_reward - y_displacement - (0.001 * weight) - normalized_rotation
+                + (0.005 * self.actions_counter))
 
     def is_done(self, weight: float, detection_flag: bool, step_counter: int, communication_error: bool) -> bool:
         # When the robot falls, the episode is done, and the environment is reset
