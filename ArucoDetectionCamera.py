@@ -97,21 +97,19 @@ class ArucoDetectionCamera:
         cv2.destroyAllWindows()
 
     @staticmethod
-    def getMarkerDistanceY(initial_position: np.ndarray, current_position: np.ndarray):
+    def getMarkerPosition(initial_position: np.ndarray, current_position: np.ndarray):
         """
-        Get the distance on the y-axis
+        Get the marker position with respect to the initial position
         :param initial_position:
         :param current_position:
         :return: The distance on the y-axis
         """
-        displacement_y = abs(current_position[1] - initial_position[1])
-
-        return displacement_y
+        return current_position - initial_position
 
     @staticmethod
-    def getMarkerRotationZ(initial_rotation: np.ndarray, current_rotation: np.ndarray) -> np.ndarray:
+    def getMarkerRotation(initial_rotation: np.ndarray, current_rotation: np.ndarray) -> np.ndarray:
         """
-        Get the rotation on the z-axis
+        Get the rotation with respect to the initial rotation
         :param initial_rotation:
         :param current_rotation:
         :return:
@@ -124,4 +122,4 @@ class ArucoDetectionCamera:
 
         relative_rotation_degrees = np.degrees(cv2.Rodrigues(relative_rotation_matrix)[0])
 
-        return abs(relative_rotation_degrees[2][0])
+        return np.reshape(relative_rotation_degrees, [3,])
