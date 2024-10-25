@@ -21,7 +21,7 @@ class RobotInterface:
 
     def get_state(self) -> list:
         self.arduino.write(b"state\n")
-        time.sleep(0.8)
+        time.sleep(0.5)
 
         if self.arduino.in_waiting > 0:
             response = self.arduino.readline().decode('utf-8').rstrip()
