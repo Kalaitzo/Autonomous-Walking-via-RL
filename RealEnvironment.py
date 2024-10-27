@@ -10,15 +10,15 @@ from ArucoDetectionCamera import ArucoDetectionCamera
 class RealEnvironment(gym.Env):
     def __init__(self, robot_interface: RobotInterface, camera: ArucoDetectionCamera, max_actions: int):
         super(RealEnvironment, self).__init__()
-        self.action_space = gym.spaces.Box(low=np.array([63, 35, 75, 30, 55, 40]),
-                                           high=np.array([67, 65, 85, 40, 75, 60]),
+        self.action_space = gym.spaces.Box(low=np.array([50, 35, 65, 20, 50, 35]),
+                                           high=np.array([80, 65, 95, 50, 80, 65]),
                                            dtype=float)  # The action space
-        self.observation_space = gym.spaces.Box(low=np.array([63, 35, 75, 30, 55, 40,  # Servo Angles
+        self.observation_space = gym.spaces.Box(low=np.array([50, 35, 65, 20, 50, 35,  # Servo Angles
                                                               -1, -1, -1,  # Marker position
                                                               -180, -180, -180,  # Marker rotation
                                                               -1  # Marker velocity on the x-axis
                                                               ]),
-                                                high=np.array([67, 65, 85, 40, 75, 60,  # Servo Angles
+                                                high=np.array([80, 65, 95, 50, 80, 65,  # Servo Angles
                                                                1, 1, 1,  # Marker position
                                                                180, 180, 180,  # Marker rotation
                                                                1  # Marker velocity on the x-axis
@@ -83,7 +83,7 @@ class RealEnvironment(gym.Env):
                                                        current_position, current_time)
 
             # Flip the velocity to match the direction of movement which is towards the -x
-            print("Velocity of the marker: {: .2f} m/s".format(x_velocity))
+            print("Velocity of the marker: {: .2f} cm/s".format(100 * x_velocity))
 
             # Get the marker position with respect to the initial position
             self.marker_position = self.camera.getMarkerPosition(self.initial_position, current_position)
@@ -177,9 +177,9 @@ class RealEnvironment(gym.Env):
         new_max = -0.4
         normalized_rotation = new_min + ((z_rotation - old_min) / (old_max - old_min)) * (new_max - new_min)
 
-        velocity_target = -2  # cm/s
+        velocity_target = -10  # cm/s
         velocity_error = abs(100 * velocity - velocity_target)
-        velocity_reward = 5 * math.exp(-0.8 * velocity_error) - 1
+        velocity_reward = 10 * math.exp(-0.1 * velocity_error) - 3.7
 
         # TODO: If I decide to use this I have to set old and new min and max for the dq
         normalized_dq = new_min + ((dq - old_min) / (old_max - old_min)) * (new_max - new_min)
