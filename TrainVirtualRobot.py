@@ -1,21 +1,14 @@
-import numpy as np
-import pybullet_envs
 import gym
-from sac_torch import Agent
+import pybullet_envs
 from utils import *
-from RealEnvironment import RealEnvironment
-from RobotInterface import RobotInterface
+from SAC_Torch import Agent
 
 if __name__ == '__main__':
-    robot = RobotInterface(SERIAL_PORT='/dev/cu.usbmodem1102')  # Robot interface
-
     env = gym.make('Walker2DBulletEnv-v0')  # Create environment
-    my_env = RealEnvironment(robot)  # My custom environment for the robot
     # test_env = gym.make('InvertedPendulumBulletEnv-v0')  # Inverted pendulum environment (for testing)
 
     # Create agents
     agent = Agent(input_dims=env.observation_space.shape, env=env, n_actions=env.action_space.shape[0])
-    agentReal = Agent(input_dims=my_env.observation_space.shape, n_actions=env.action_space.shape[0])
     n_games = 10000  # Number of games
 
     filename = 'Walker2D.png'  # Filename
@@ -47,7 +40,6 @@ if __name__ == '__main__':
         physics_client_id = env.virtualRealEnv.physicsClientId  # Physics client ID
         robot_id = env.virtualRealEnv.robot.objects[0]  # Robot ID
         joint_ids = [joint.jointIndex for joint in env.virtualRealEnv.robot.jdict.values()]  # Joint IDs
-        linearVelocity, angularVelocity = p.getBaseVelocity(robot_id)  # Linear and angular velocity
 
         # Get the angles of the joints before starting the episode
         angles_deg = get_angles(robot_id, joint_ids)
@@ -58,11 +50,8 @@ if __name__ == '__main__':
         # Append the angles to the trajectory array
         trajectory = np.append(trajectory, angles_deg)
 
-        # reformatObservation(observation, angles_deg) # Reformat observation
-        observationMine = np.append(angles_deg, linearVelocity[0])  # Observation
-
         while not done:  # Iterate while not done (Each iteration is a timestep)
-            action = agent.choose_action(observationMine)  # Choose action
+            action = agent.choose_action(observation)  # Choose action
             observation_, reward, done, info = env.step(action)  # Step
             score += reward  # Update score
             agent.remember(observation, action, reward, observation_, done)  # Remember
