@@ -13,7 +13,7 @@ training_cycle = 21  # The number of the training cycle that is about to start
 load_time_steps = (training_cycle - 1) * time_steps  # Amount of time-steps the saved model has been trained for
 
 models_dir = "models/"  # The models directory
-plots_dir = "plots/"  # The plots directory
+plots_dir = "real_robot_plots/"  # The real_robot_plots directory
 attempt_dir = f"attempt_{attempt}/"  # The attempt directory
 positions_dir = "positions/"  # The positions directory
 model_checkpoint = f"sac_robot{load_time_steps}"  # The model checkpoint
