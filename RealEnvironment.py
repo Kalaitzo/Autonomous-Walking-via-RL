@@ -10,15 +10,15 @@ from ArucoDetectionCamera import ArucoDetectionCamera
 class RealEnvironment(gym.Env):
     def __init__(self, robot_interface: RobotInterface, camera: ArucoDetectionCamera, max_actions: int):
         super(RealEnvironment, self).__init__()
-        self.action_space = gym.spaces.Box(low=np.array([50, 35, 65, 20, 50, 35]),
-                                           high=np.array([80, 65, 95, 50, 80, 65]),
+        self.action_space = gym.spaces.Box(low=np.array([55, 30, 65, 20, 50, 35]),
+                                           high=np.array([75, 50, 95, 50, 80, 65]),
                                            dtype=float)  # The action space
-        self.observation_space = gym.spaces.Box(low=np.array([50, 35, 65, 20, 50, 35,  # Servo Angles
+        self.observation_space = gym.spaces.Box(low=np.array([75, 50, 95, 50, 80, 65,  # Servo Angles
                                                               -1, -1, -1,  # Marker position
                                                               -180, -180, -180,  # Marker rotation
                                                               -1  # Marker velocity on the x-axis
                                                               ]),
-                                                high=np.array([80, 65, 95, 50, 80, 65,  # Servo Angles
+                                                high=np.array([75, 50, 95, 50, 80, 65,  # Servo Angles
                                                                1, 1, 1,  # Marker position
                                                                180, 180, 180,  # Marker rotation
                                                                1  # Marker velocity on the x-axis
@@ -75,7 +75,7 @@ class RealEnvironment(gym.Env):
             self.marker_position = np.array([0, 0, 0])
             self.marker_rotation = np.array([0, 0, 0])
             x_velocity = 0
-            dq = np.array([0, 0, 0, 0, 0, 0])
+            dq = 0
             detected_flag = False
             print("Did not detect the marker")
         else:
@@ -103,13 +103,14 @@ class RealEnvironment(gym.Env):
         self.observation = np.hstack([angles, self.marker_position, self.marker_rotation, x_velocity])
 
         # Compute the reward for each step
-        reward = self.calculate_reward(x_velocity, self.marker_position[1], dq, weight, self.marker_position[2])
+        reward = self.calculate_reward(x_velocity, abs(self.marker_position[1]),
+                                       dq, weight, abs(self.marker_rotation[2]))
         self.episode_score += reward  # Update the episode score
         print('---------------')
         print(f"Reward for this action: {reward}")
 
         # Check if the episode is done.
-        done = self.is_done(weight, detected_flag, self.actions_counter, communication_error)
+        done = self.is_done(weight, detected_flag, communication_error)
 
         truncated = self.actions_counter == self.max_actions  # Check reached the max episode steps
 
@@ -172,21 +173,38 @@ class RealEnvironment(gym.Env):
         # - The distance from the movement axis: dy (m - Penalty)
         # - The rotation on the z-axis: z_rotation (degrees - Penalty)
         # - A small reward for not falling (r = e.g. 0.1)
-        old_min = 0
-        old_max = 180
-
-        new_min = 0
-        new_max = -4
-        normalized_rotation = new_min + ((z_rotation - old_min) / (old_max - old_min)) * (new_max - new_min)
-
         velocity_target = -10  # cm/s
         velocity_error = abs(100 * velocity - velocity_target)
         velocity_reward = 10 * math.exp(-0.1 * velocity_error) - 3.7
 
         weight = 2 if weight > 200 else weight * 0.01
 
-        return velocity_reward - y_displacement - weight - normalized_rotation + (0.005 * self.actions_counter)
+        # Normalized the rotation on the z-axis
+        old_min = 0
+        old_max = 180
 
-    def is_done(self, weight: float, detection_flag: bool, step_counter: int, communication_error: bool) -> bool:
+        new_min = 0
+        new_max = -1
+        normalized_rotation = new_min + ((z_rotation - old_min) / (old_max - old_min)) * (new_max - new_min)
+
+        # Normalize the dq
+        old_dq_min = 0
+        old_dq_max = 160
+
+        new_dq_min = 0
+        new_dq_max = -1
+        normalized_dq = new_dq_min + ((dq - old_dq_min) / (old_dq_max - old_dq_min)) * (new_dq_max - new_dq_min)
+
+        return (velocity_reward - y_displacement - weight + normalized_rotation + normalized_dq +
+                (0.005 * self.actions_counter))
+
+    def is_done(self, weight: float, detection_flag: bool, communication_error: bool) -> bool:
+        marker_rotations = self.marker_rotation
+        rotation_flag = False
+        # Check if either roll, pitch or yaw is greater than 45 degrees
+        if np.any(np.abs(marker_rotations) > 45):
+            rotation_flag = True
+
         # When the robot falls, the episode is done, and the environment is reset
-        return weight > 200 or not detection_flag or step_counter == self.max_actions or communication_error
+        return (weight > 200 or not detection_flag or self.actions_counter == self.max_actions or communication_error
+                or rotation_flag)
