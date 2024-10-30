@@ -38,6 +38,7 @@ class RealEnvironment(gym.Env):
         self.initial_rotation = None  # The initial rotation of the marker
         self.marker_position = None  # The position of the marker with respect to the initial position
         self.marker_rotation = None  # The rotation of the marker with respect to the initial rotation
+        self.final_positions = []  # The final positions of the marker
 
     def step(self, action: list) -> tuple:
         """
@@ -117,6 +118,7 @@ class RealEnvironment(gym.Env):
         print('---------------')
         if done:
             print(f"Total reward for current episode: {self.episode_score}\n")
+            self.final_positions.append(self.marker_position[0])  # Append the final position of the marker
             self.scores.append(self.episode_score)  # Append the score to the list of scores
         return self.observation, reward, done, truncated, info
 
@@ -174,18 +176,16 @@ class RealEnvironment(gym.Env):
         old_max = 180
 
         new_min = 0
-        new_max = -0.4
+        new_max = -4
         normalized_rotation = new_min + ((z_rotation - old_min) / (old_max - old_min)) * (new_max - new_min)
 
         velocity_target = -10  # cm/s
         velocity_error = abs(100 * velocity - velocity_target)
         velocity_reward = 10 * math.exp(-0.1 * velocity_error) - 3.7
 
-        # TODO: If I decide to use this I have to set old and new min and max for the dq
-        normalized_dq = new_min + ((dq - old_min) / (old_max - old_min)) * (new_max - new_min)
+        weight = 2 if weight > 200 else weight * 0.01
 
-        return (velocity_reward - y_displacement - (0.001 * weight) - normalized_rotation
-                + (0.005 * self.actions_counter))
+        return velocity_reward - y_displacement - weight - normalized_rotation + (0.005 * self.actions_counter)
 
     def is_done(self, weight: float, detection_flag: bool, step_counter: int, communication_error: bool) -> bool:
         # When the robot falls, the episode is done, and the environment is reset
