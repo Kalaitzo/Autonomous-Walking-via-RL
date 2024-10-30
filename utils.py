@@ -14,6 +14,13 @@ def plot_learning_curve(x, scores, figure_file):
     plt.savefig(figure_file)
 
 
+def plot_final_positions(x, final_positions, figure_file):
+    plt.figure()
+    plt.plot(x, final_positions)
+    plt.title(f'Distance robot moved in the x direction')
+    plt.savefig(figure_file)
+
+
 def keep_same_angles(action, indexes):
     for index in indexes:
         action[index] = 0
