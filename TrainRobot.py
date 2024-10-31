@@ -9,7 +9,7 @@ key = 0  # The key to be pressed
 attempt = 6  # The number of learning attempts
 time_steps = 500  # Number of steps to take in each training cycle
 training_cycles = 3  # Number of training cycles to perform
-training_cycle = 1  # The number of the training cycle that is about to start
+training_cycle = 4  # The number of the training cycle that is about to start
 load_time_steps = (training_cycle - 1) * time_steps  # Amount of time-steps the saved model has been trained for
 
 models_dir = "models/"  # The models directory
@@ -29,7 +29,7 @@ aruco_camera = ArucoDetectionCamera(marker_id=0, side_pixels=200, side_m=0.07,
 # Create the necessary gym type environment that interacts with the robot
 real_env = RealEnvironment(robot, aruco_camera, max_actions=100)
 
-load_model = False  # Whether to load a model or not
+load_model = True  # Whether to load a model or not
 # Create the learning model (SAC)
 if load_model:
     model = SAC.load(load_path, env=real_env)
@@ -73,9 +73,10 @@ for i in range(training_cycles):
     plot_learning_curve(x, scores, learning_figure_file)
 
     # Plot the final positions
-    positions_filename = f"Robot_Final_Positions_{(i + training_cycle) * time_steps}.png"
-    positions_figure_file = plots_dir + attempt_dir + positions_dir + positions_filename
-    plot_final_positions(x, final_positions, positions_figure_file)
+    if i == 2:
+        positions_filename = f"Robot_Final_Positions_{(i + training_cycle) * time_steps}.png"
+        positions_figure_file = plots_dir + attempt_dir + positions_dir + positions_filename
+        plot_final_positions(x, final_positions, positions_figure_file)
 
     # Reset the key
     key = 0

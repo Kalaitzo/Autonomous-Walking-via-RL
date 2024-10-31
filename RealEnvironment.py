@@ -10,15 +10,15 @@ from ArucoDetectionCamera import ArucoDetectionCamera
 class RealEnvironment(gym.Env):
     def __init__(self, robot_interface: RobotInterface, camera: ArucoDetectionCamera, max_actions: int):
         super(RealEnvironment, self).__init__()
-        self.action_space = gym.spaces.Box(low=np.array([55, 30, 65, 20, 50, 35]),
-                                           high=np.array([75, 50, 95, 50, 80, 65]),
+        self.action_space = gym.spaces.Box(low=np.array([50, 35, 65, 20, 50, 35]),
+                                           high=np.array([80, 65, 95, 50, 80, 65]),
                                            dtype=float)  # The action space
-        self.observation_space = gym.spaces.Box(low=np.array([75, 50, 95, 50, 80, 65,  # Servo Angles
+        self.observation_space = gym.spaces.Box(low=np.array([50, 35, 65, 20, 50, 35,  # Servo Angles
                                                               -1, -1, -1,  # Marker position
                                                               -180, -180, -180,  # Marker rotation
                                                               -1  # Marker velocity on the x-axis
                                                               ]),
-                                                high=np.array([75, 50, 95, 50, 80, 65,  # Servo Angles
+                                                high=np.array([80, 65, 95, 50, 80, 65,  # Servo Angles
                                                                1, 1, 1,  # Marker position
                                                                180, 180, 180,  # Marker rotation
                                                                1  # Marker velocity on the x-axis
@@ -104,7 +104,7 @@ class RealEnvironment(gym.Env):
 
         # Compute the reward for each step
         reward = self.calculate_reward(x_velocity, abs(self.marker_position[1]),
-                                       dq, weight, abs(self.marker_rotation[2]))
+                                       weight, abs(self.marker_rotation[2]))
         self.episode_score += reward  # Update the episode score
         print('---------------')
         print(f"Reward for this action: {reward}")
@@ -165,7 +165,7 @@ class RealEnvironment(gym.Env):
         print('---------------')
         return self.observation, info
 
-    def calculate_reward(self, velocity: float, y_displacement: np.ndarray, dq: np.ndarray, weight: float,
+    def calculate_reward(self, velocity: float, y_displacement: np.ndarray, weight: float,
                          z_rotation: np.ndarray) -> float:
         # - The robot's speed: v (m/s - Reward)
         # - The weight measured by the sensor: weight (grams - Penalty)
@@ -180,23 +180,14 @@ class RealEnvironment(gym.Env):
         weight = 2 if weight > 200 else weight * 0.01
 
         # Normalized the rotation on the z-axis
-        old_min = 0
-        old_max = 180
+        old_phi_min = 0
+        old_phi_max = 180
 
-        new_min = 0
-        new_max = -1
-        normalized_rotation = new_min + ((z_rotation - old_min) / (old_max - old_min)) * (new_max - new_min)
+        new_phi_min = 0
+        new_phi_max = -2
+        normalized_rotation = new_phi_min + ((z_rotation - old_phi_min) / (old_phi_max - old_phi_min)) * (new_phi_max - new_phi_min)
 
-        # Normalize the dq
-        old_dq_min = 0
-        old_dq_max = 160
-
-        new_dq_min = 0
-        new_dq_max = -1
-        normalized_dq = new_dq_min + ((dq - old_dq_min) / (old_dq_max - old_dq_min)) * (new_dq_max - new_dq_min)
-
-        return (velocity_reward - y_displacement - weight + normalized_rotation + normalized_dq +
-                (0.005 * self.actions_counter))
+        return velocity_reward - y_displacement - weight + normalized_rotation + (0.005 * self.actions_counter)
 
     def is_done(self, weight: float, detection_flag: bool, communication_error: bool) -> bool:
         marker_rotations = self.marker_rotation
