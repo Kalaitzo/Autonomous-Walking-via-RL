@@ -10,7 +10,7 @@ key = 0  # The key to be pressed
 attempt = 6  # The number of learning attempts
 time_steps = 500  # Number of steps to take in each training cycle
 training_cycles = 3  # Number of training cycles to perform
-training_cycle = 3  # The number of the training cycle that is about to start
+training_cycle = 7  # The number of the training cycle that is about to start
 load_time_steps = (training_cycle - 1) * time_steps  # Amount of time-steps the saved model has been trained for
 
 models_dir = "models/"  # The models directory
@@ -34,12 +34,10 @@ aruco_camera = ArucoDetectionCamera(marker_id=0, side_pixels=200, side_m=0.07,
 real_env = RealEnvironment(robot, aruco_camera, max_actions=100)
 
 load_model = True  # Whether to load a model or not
-# Create the learning model (SAC)
 if load_model:
     model = SAC.load(load_path, env=real_env)
     model.load_replay_buffer(load_buffer_path)
     model.batch_size = 256
-    model.learning_rate = 0.001
 else:
     model = SAC("MlpPolicy", real_env, batch_size=100, verbose=1, learning_starts=100)
 
