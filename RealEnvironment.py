@@ -68,6 +68,8 @@ class RealEnvironment(gym.Env):
         communication_error = np.any(angles != rounded_action)  # Check for arduino communication error
         if communication_error:
             print("Angles from arduino don't match the action - Reset")
+            # Clear the communication channel
+            self.robot_interface.clear_communication()
 
         # Calculate the velocity developed while applying the action
         detected_flag = True
@@ -75,7 +77,6 @@ class RealEnvironment(gym.Env):
             self.marker_position = np.array([0, 0, 0])
             self.marker_rotation = np.array([0, 0, 0])
             x_velocity = 0
-            dq = 0
             detected_flag = False
             print("Did not detect the marker")
         else:
@@ -95,8 +96,6 @@ class RealEnvironment(gym.Env):
             self.marker_rotation = self.camera.getMarkerRotation(self.initial_rotation, current_rotation)
             yaw = abs(self.marker_rotation[2])  # The rotation on the z-axis
             print("Rotation around the z-axis: {: .2f} degrees".format(yaw))
-
-            dq = np.sum(np.abs(angles - self.observation[:6]))  # Calculate the difference in angles
 
         self.actions_counter += 1  # Increment the action counter
 
@@ -185,7 +184,8 @@ class RealEnvironment(gym.Env):
 
         new_phi_min = 0
         new_phi_max = -2
-        normalized_rotation = new_phi_min + ((z_rotation - old_phi_min) / (old_phi_max - old_phi_min)) * (new_phi_max - new_phi_min)
+        normalized_rotation = (new_phi_min + ((z_rotation - old_phi_min) / (old_phi_max - old_phi_min)) *
+                               (new_phi_max - new_phi_min))
 
         return velocity_reward - y_displacement - weight + normalized_rotation + (0.005 * self.actions_counter)
 
@@ -197,5 +197,5 @@ class RealEnvironment(gym.Env):
             rotation_flag = True
 
         # When the robot falls, the episode is done, and the environment is reset
-        return (weight > 200 or not detection_flag or self.actions_counter == self.max_actions or communication_error
+        return (weight > 300 or not detection_flag or self.actions_counter == self.max_actions or communication_error
                 or rotation_flag)
