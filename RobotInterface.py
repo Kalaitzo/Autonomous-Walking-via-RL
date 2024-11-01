@@ -39,3 +39,7 @@ class RobotInterface:
 
     def disconnect(self):
         self.arduino.close()
+
+    def clear_communication(self):
+        self.arduino.reset_input_buffer()
+        self.arduino.reset_output_buffer()
