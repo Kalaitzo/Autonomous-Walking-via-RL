@@ -1,4 +1,5 @@
 import cv2
+import csv
 from utils import plot_learning_curve, plot_final_positions
 from RobotInterface import RobotInterface
 from RealEnvironment import RealEnvironment
@@ -9,15 +10,18 @@ key = 0  # The key to be pressed
 attempt = 6  # The number of learning attempts
 time_steps = 500  # Number of steps to take in each training cycle
 training_cycles = 3  # Number of training cycles to perform
-training_cycle = 4  # The number of the training cycle that is about to start
+training_cycle = 3  # The number of the training cycle that is about to start
 load_time_steps = (training_cycle - 1) * time_steps  # Amount of time-steps the saved model has been trained for
 
 models_dir = "models/"  # The models directory
+scores_dir = "scores/"  # The scores directory
 plots_dir = "real_robot_plots/"  # The real_robot_plots directory
 attempt_dir = f"attempt_{attempt}/"  # The attempt directory
 positions_dir = "positions/"  # The positions directory
 model_checkpoint = f"sac_robot{load_time_steps}"  # The model checkpoint
+buffer_checkpoint = f"sac_buffer{load_time_steps}"
 load_path = models_dir + attempt_dir + model_checkpoint  # The complete path for the model loading
+load_buffer_path = models_dir + attempt_dir + buffer_checkpoint  # The complete path for the buffer loading
 
 # Make the connection to the robot (python - arduino)
 robot = RobotInterface(SERIAL_PORT='/dev/cu.usbmodem11301')
@@ -33,6 +37,9 @@ load_model = True  # Whether to load a model or not
 # Create the learning model (SAC)
 if load_model:
     model = SAC.load(load_path, env=real_env)
+    model.load_replay_buffer(load_buffer_path)
+    model.batch_size = 256
+    model.learning_rate = 0.001
 else:
     model = SAC("MlpPolicy", real_env, batch_size=100, verbose=1, learning_starts=100)
 
@@ -56,15 +63,25 @@ for i in range(training_cycles):
     # - The model learns if the number of time-steps is larger than the learning starts value
     model.learn(total_timesteps=time_steps, reset_num_timesteps=False)
 
-    model_file = f"sac_robot{(i + training_cycle) * time_steps}"
-    save_path = models_dir + attempt_dir + model_file
-    # Save the model
-    model.save(save_path)
+    model_file = f"sac_robot{(i + training_cycle) * time_steps}"  # The model file
+    buffer_file = f"sac_buffer{(i + training_cycle) * time_steps}"  # The buffer file
+    score_file = f"sac_score{(i + training_cycle) * time_steps}"  # The score file
+    save_path = models_dir + attempt_dir + model_file  # The complete path for the model saving
+    save_buffer_path = models_dir + attempt_dir + buffer_file  # The complete path for the buffer saving
+    save_score_path = scores_dir + attempt_dir + score_file  # The complete path for the score saving
 
     # Get the scores from the environment
     scores = real_env.scores
     # Get the final positions from the environment
     final_positions = real_env.final_positions
+
+    # Save the model and the replay buffer
+    model.save(save_path)
+    model.save_replay_buffer(save_buffer_path)
+    with open(save_score_path, mode='w', newline="") as file:
+        writer = csv.writer(file)
+        for score in scores:
+            writer.writerow([score])
 
     # Plot the scores
     learning_filename = f"Robot_Scores_{(i + training_cycle) * time_steps}.png"
