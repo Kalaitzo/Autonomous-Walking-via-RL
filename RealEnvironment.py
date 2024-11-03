@@ -176,7 +176,7 @@ class RealEnvironment(gym.Env):
         velocity_error = abs(100 * velocity - velocity_target)
         velocity_reward = 10 * math.exp(-0.1 * velocity_error) - 3.7
 
-        weight = 2 if weight > 200 else weight * 0.01
+        weight = 1 if weight > 200 else weight * 0.005
 
         # Normalized the rotation on the z-axis
         old_phi_min = 0
