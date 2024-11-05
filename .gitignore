@@ -6,3 +6,4 @@ camera_calibration_params.npz
 img/aruco_markers/
 img/calibration_images/
 **/sac_buffer*.pkl
+create_plots.py
