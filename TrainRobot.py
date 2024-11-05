@@ -10,7 +10,7 @@ key = 0  # The key to be pressed
 attempt = 7  # The number of learning attempts
 time_steps = 500  # Number of steps to take in each training cycle
 training_cycles = 3  # Number of training cycles to perform
-training_cycle = 17  # The number of the training cycle that is about to start
+training_cycle = 19  # The number of the training cycle that is about to start
 load_time_steps = (training_cycle - 1) * time_steps  # Amount of time-steps the saved model has been trained for
 
 models_dir = "models/"  # The models directory
