@@ -7,3 +7,4 @@ img/aruco_markers/
 img/calibration_images/
 **/sac_buffer*.pkl
 create_plots.py
+thesis_plots/*
