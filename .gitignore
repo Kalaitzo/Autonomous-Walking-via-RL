@@ -8,4 +8,3 @@ img/calibration_images/
 **/sac_buffer*.pkl
 CreatePlots.py
 thesis_images/*
-PrintModelParameters.py
