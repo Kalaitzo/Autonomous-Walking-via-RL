@@ -21,12 +21,6 @@ def plot_final_positions(x, final_positions, figure_file):
     plt.savefig(figure_file)
 
 
-def keep_same_angles(action, indexes):
-    for index in indexes:
-        action[index] = 0
-    return action
-
-
 def get_angles(robot_id, joint_ids):
     angles = []  # Array for the new angles
     for joint_id in joint_ids:
