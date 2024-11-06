@@ -5,8 +5,7 @@ from RealEnvironment import RealEnvironment
 from stable_baselines3 import SAC
 from ArucoDetectionCamera import ArucoDetectionCamera
 
-load_path = "models/attempt_5/sac_robot10000"
-# load_buffer_path = "models/attempt_5/sac_buffer10000"
+load_path = "models/attempt_7/sac_robot10000"
 
 # Make the connection to the robot (python - arduino)
 robot = RobotInterface(SERIAL_PORT='/dev/cu.usbmodem11301')
@@ -19,8 +18,6 @@ aruco_camera = ArucoDetectionCamera(marker_id=0, side_pixels=200, side_m=0.07,
 real_env = RealEnvironment(robot, aruco_camera, max_actions=100)
 
 model = SAC.load(load_path, env=real_env)
-# model.load_replay_buffer(load_buffer_path)
-# model.batch_size = 256
 
 n_episodes = 3
 episode_rewards = []
